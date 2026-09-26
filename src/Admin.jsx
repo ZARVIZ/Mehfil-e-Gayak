@@ -1,17 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import './App.css';
 
 export default function Admin() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [battles, setBattles] = useState([]);
+
+  const fetchResults = async () => {
+    const { data, error } = await supabase
+      .from('battles')
+      .select('*')
+      .order('id', { ascending: true });
+    if (!error && data) {
+      setBattles(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchResults();
+  }, []);
 
   const generateMatches = async () => {
     setLoading(true);
     setStatus('Fankaaron ko ikattha kiya jaa raha hai...');
 
     try {
-      // 1. Saare contestants ko database se lana
       const { data: contestants, error: fetchError } = await supabase
         .from('contestants')
         .select('*');
@@ -24,43 +38,40 @@ export default function Admin() {
         return;
       }
 
-      // 2. Random Shuffle (Parchi system)
       const shuffled = [...contestants].sort(() => Math.random() - 0.5);
-      
       const newBattles = [];
       
-      // 3. 2-2 ke jode (pairs) banana
       for (let i = 0; i < shuffled.length; i += 2) {
         if (i + 1 < shuffled.length) {
-          // Normal Battle (A vs B)
           newBattles.push({
             singer_a: shuffled[i].name,
             audio_a: shuffled[i].audio_url,
             singer_b: shuffled[i+1].name,
-            audio_b: shuffled[i+1].audio_url
+            audio_b: shuffled[i+1].audio_url,
+            votes_a: 0,
+            votes_b: 0
           });
         } else {
-          // Odd One Out (Wildcard)
           newBattles.push({
             singer_a: shuffled[i].name,
             audio_a: shuffled[i].audio_url,
-            singer_b: "Wildcard Entry (Bina lade aage)",
-            audio_b: "" 
+            singer_b: "Wildcard Entry",
+            audio_b: "",
+            votes_a: 0,
+            votes_b: 0
           });
         }
       }
 
       setStatus('Purani mehfil ki safai ho rahi hai...');
-      // 4. Purani battles ko clear karna (Naye round ke liye)
       const { error: deleteError } = await supabase
         .from('battles')
         .delete()
-        .neq('id', 0); // Sab kuch delete karne ki trick
+        .neq('id', 0);
 
       if (deleteError) throw deleteError;
 
       setStatus('Naye matches set kiye jaa rahe hain...');
-      // 5. Naye matches ko battles table mein dalna
       const { error: insertError } = await supabase
         .from('battles')
         .insert(newBattles);
@@ -68,6 +79,7 @@ export default function Admin() {
       if (insertError) throw insertError;
 
       setStatus(`Mubarak ho! ${newBattles.length} battles safaltapurvak set ho gayi hain.`);
+      fetchResults();
     } catch (error) {
       setStatus(`Kuch gadbad hui: ${error.message}`);
     } finally {
@@ -94,6 +106,35 @@ export default function Admin() {
           <p style={{ marginTop: '20px', color: '#6a1b29', fontWeight: 'bold', fontStyle: 'italic' }}>
             {status}
           </p>
+        )}
+
+        <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #d4c4a8' }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h2 style={{ fontFamily: 'Playfair Display', color: '#5c1522', margin: 0 }}>Live Natije (Scoreboard)</h2>
+          <button className="small-btn" onClick={fetchResults}>Refresh Votes 🔄</button>
+        </div>
+
+        {battles.length === 0 ? (
+          <p style={{ color: '#777', fontStyle: 'italic' }}>Abhi koi match chalu nahi hai.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+            {battles.map((b, index) => (
+              <div key={b.id} style={{ padding: '15px', borderRadius: '10px', backgroundColor: '#fdfbf7', border: '1px solid #e2d5be', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: '#888', display: 'block' }}>Muqabla #{index + 1}</span>
+                  <strong style={{ color: '#2c3e50', fontSize: '1.1rem' }}>{b.singer_a}</strong> 
+                  <span style={{ margin: '0 10px', color: '#999', fontWeight: 'bold' }}>VS</span> 
+                  <strong style={{ color: '#6a1b29', fontSize: '1.1rem' }}>{b.singer_b}</strong>
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', backgroundColor: '#efe8d8', padding: '8px 15px', borderRadius: '8px' }}>
+                  <span style={{ color: '#2c3e50' }}>{b.votes_a || 0}</span>
+                  <span style={{ margin: '0 8px', color: '#999' }}>-</span>
+                  <span style={{ color: '#6a1b29' }}>{b.votes_b || 0}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

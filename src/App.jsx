@@ -11,10 +11,12 @@ function App() {
   
   const currentlyPlaying = useRef(null);
 
-  // Supabase se asli battles fetch karna
   useEffect(() => {
     const fetchBattles = async () => {
-      const { data, error } = await supabase.from('battles').select('*');
+      const { data, error } = await supabase
+        .from('battles')
+        .select('*')
+        .order('id', { ascending: true });
       if (!error && data) {
         setBattles(data);
       }
@@ -30,12 +32,44 @@ function App() {
     currentlyPlaying.current = e.target;
   };
 
-  const handleVote = (name) => {
-    setVotedName(name);
+  const handleVote = async (choice, displayName) => {
+    setVotedName(displayName);
     setShowPopup(true); 
 
     if (currentlyPlaying.current) {
       currentlyPlaying.current.pause();
+    }
+
+    const currentBattle = battles[currentIndex];
+
+    // Database se taja votes laakar +1 karna
+    try {
+      const { data: latestBattle } = await supabase
+        .from('battles')
+        .select('votes_a, votes_b')
+        .eq('id', currentBattle.id)
+        .single();
+
+      if (latestBattle) {
+        let newVotesA = latestBattle.votes_a || 0;
+        let newVotesB = latestBattle.votes_b || 0;
+
+        if (choice === 'A') newVotesA += 1;
+        if (choice === 'B') newVotesB += 1;
+        if (choice === 'BOTH') {
+          newVotesA += 1;
+          newVotesB += 1;
+        }
+
+        if (choice !== 'NOTA') {
+          await supabase
+            .from('battles')
+            .update({ votes_a: newVotesA, votes_b: newVotesB })
+            .eq('id', currentBattle.id);
+        }
+      }
+    } catch (err) {
+      console.error("Vote save karne mein dikkat:", err);
     }
 
     setTimeout(() => {
@@ -44,7 +78,6 @@ function App() {
     }, 2000);
   };
 
-  // 1. Loading State
   if (loading) {
     return (
       <div className="mehfil-container">
@@ -54,7 +87,6 @@ function App() {
     );
   }
 
-  // 2. Synchronization State (Voting chalu hone se pehle)
   if (battles.length === 0) {
     return (
       <div className="mehfil-container">
@@ -64,7 +96,6 @@ function App() {
     );
   }
 
-  // 3. Voting Khatam Hone Par
   if (currentIndex >= battles.length) {
     return (
       <div className="mehfil-container">
@@ -101,13 +132,13 @@ function App() {
                 src={currentBattle.audio_a}
                 onPlay={handlePlay}
               ></audio>
-              <button className="vote-btn" onClick={() => handleVote(currentBattle.singer_a)}>Vote {currentBattle.singer_a}</button>
+              <button className="vote-btn" onClick={() => handleVote('A', currentBattle.singer_a)}>Vote {currentBattle.singer_a}</button>
             </div>
           </div>
 
           <div className="vs-badge">VS</div>
 
-          {/* Lower Half: Player 2 (Agar Wildcard hua toh gaana aur vote button nahi dikhega) */}
+          {/* Lower Half: Player 2 */}
           <div className="singer-card-bottom">
             <img src={`https://ui-avatars.com/api/?name=${currentBattle.singer_b}&background=6a1b29&color=fff&size=200`} alt={currentBattle.singer_b} className="dp-box" />
             <div className="singer-details right-align">
@@ -122,7 +153,7 @@ function App() {
                     src={currentBattle.audio_b}
                     onPlay={handlePlay}
                   ></audio>
-                  <button className="vote-btn" onClick={() => handleVote(currentBattle.singer_b)}>Vote {currentBattle.singer_b}</button>
+                  <button className="vote-btn" onClick={() => handleVote('B', currentBattle.singer_b)}>Vote {currentBattle.singer_b}</button>
                 </>
               ) : (
                 <p style={{fontStyle: 'italic', color: '#6a1b29'}}>Wildcard Entry (Bina lade seedha agle round mein!)</p>
@@ -132,11 +163,10 @@ function App() {
 
         </div>
 
-        {/* Agar Wildcard match nahi hai tabhi NOTA/Both dikhega */}
         {currentBattle.audio_b && (
           <div className="bottom-actions">
-            <button className="small-btn" onClick={() => handleVote("NOTA")}>NOTA</button>
-            <button className="small-btn" onClick={() => handleVote("Dono fankaaron")}>Both</button>
+            <button className="small-btn" onClick={() => handleVote('NOTA', 'NOTA')}>NOTA</button>
+            <button className="small-btn" onClick={() => handleVote('BOTH', 'Dono fankaaron')}>Both</button>
           </div>
         )}
       </div>
