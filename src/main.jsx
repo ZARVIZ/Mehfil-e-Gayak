@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import App from './App.jsx'
 import Register from './Register.jsx'
-import Admin from './Admin.jsx'
+import Admin from './admin.jsx'
 import './index.css'
 import './App.css'
 
