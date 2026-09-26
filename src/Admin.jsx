@@ -12,16 +12,32 @@ export default function Admin() {
 
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [contestants, setContestants] = useState([]);
   const [battles, setBattles] = useState([]);
 
   useEffect(() => {
-    // Check agar is session mein pehle se login hai
     const savedAuth = sessionStorage.getItem('mehfil_admin_auth');
     if (savedAuth === 'true') {
       setIsAuthenticated(true);
-      fetchResults();
+      fetchAllData();
     }
   }, []);
+
+  const fetchAllData = async () => {
+    // 1. Saare Contestants lana
+    const { data: cData } = await supabase
+      .from('contestants')
+      .select('*')
+      .order('id', { ascending: true });
+    if (cData) setContestants(cData);
+
+    // 2. Saare Battles lana
+    const { data: bData } = await supabase
+      .from('battles')
+      .select('*')
+      .order('id', { ascending: true });
+    if (bData) setBattles(bData);
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -29,7 +45,7 @@ export default function Admin() {
       setIsAuthenticated(true);
       sessionStorage.setItem('mehfil_admin_auth', 'true');
       setAuthError('');
-      fetchResults();
+      fetchAllData();
     } else {
       setAuthError('Galat Password! Sirf Admin ko ijazat hai.');
       setPasswordInput('');
@@ -41,13 +57,20 @@ export default function Admin() {
     sessionStorage.removeItem('mehfil_admin_auth');
   };
 
-  const fetchResults = async () => {
-    const { data, error } = await supabase
-      .from('battles')
-      .select('*')
-      .order('id', { ascending: true });
-    if (!error && data) {
-      setBattles(data);
+  // Fake ya Invalid Contestant ko Remove karne ka function
+  const handleRemoveContestant = async (id, name) => {
+    const confirmDelete = window.confirm(`Kya aap sach mein "${name}" ki entry delete karna chahte hain?`);
+    if (!confirmDelete) return;
+
+    const { error } = await supabase
+      .from('contestants')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert(`Delete karne mein dikkat aayi: ${error.message}`);
+    } else {
+      setContestants(contestants.filter(c => c.id !== id));
     }
   };
 
@@ -59,19 +82,19 @@ export default function Admin() {
     setStatus('Fankaaron ko ikattha kiya jaa raha hai...');
 
     try {
-      const { data: contestants, error: fetchError } = await supabase
+      const { data: currentContestants, error: fetchError } = await supabase
         .from('contestants')
         .select('*');
 
       if (fetchError) throw fetchError;
 
-      if (contestants.length < 2) {
-        setStatus('Match banane ke liye kam se kam 2 fankaar chahiye!');
+      if (currentContestants.length < 2) {
+        setStatus('Match banane ke liye kam se kam 2 valid fankaar chahiye!');
         setLoading(false);
         return;
       }
 
-      const shuffled = [...contestants].sort(() => Math.random() - 0.5);
+      const shuffled = [...currentContestants].sort(() => Math.random() - 0.5);
       const newBattles = [];
       
       for (let i = 0; i < shuffled.length; i += 2) {
@@ -79,8 +102,10 @@ export default function Admin() {
           newBattles.push({
             singer_a: shuffled[i].name,
             audio_a: shuffled[i].audio_url,
+            dp_a: shuffled[i].dp_url,
             singer_b: shuffled[i+1].name,
             audio_b: shuffled[i+1].audio_url,
+            dp_b: shuffled[i+1].dp_url,
             votes_a: 0,
             votes_b: 0
           });
@@ -88,8 +113,10 @@ export default function Admin() {
           newBattles.push({
             singer_a: shuffled[i].name,
             audio_a: shuffled[i].audio_url,
+            dp_a: shuffled[i].dp_url,
             singer_b: "Wildcard Entry",
             audio_b: "",
+            dp_b: `https://ui-avatars.com/api/?name=WC&background=6a1b29&color=fff&size=200`,
             votes_a: 0,
             votes_b: 0
           });
@@ -112,7 +139,7 @@ export default function Admin() {
       if (insertError) throw insertError;
 
       setStatus(`Mubarak ho! ${newBattles.length} battles safaltapurvak set ho gayi hain.`);
-      fetchResults();
+      fetchAllData();
     } catch (error) {
       setStatus(`Kuch gadbad hui: ${error.message}`);
     } finally {
@@ -120,7 +147,6 @@ export default function Admin() {
     }
   };
 
-  // 1. AGAR LOGIN NAHI HAI TOH PASSWORD SCREEN DIKHAO
   if (!isAuthenticated) {
     return (
       <div className="mehfil-container">
@@ -159,7 +185,6 @@ export default function Admin() {
     );
   }
 
-  // 2. AGAR PASSWORD SAHI HAI TOH CONTROL ROOM DIKHAO
   return (
     <div className="mehfil-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -170,29 +195,78 @@ export default function Admin() {
       </div>
 
       <h1>Control Room</h1>
-      <p className="subtitle">Sirf Admin Ke Liye</p>
+      <p className="subtitle">Entries Manage Karein aur Matches Banayein</p>
 
-      <div className="battle-arena-vertical" style={{ padding: '30px' }}>
+      <div className="battle-arena-vertical" style={{ padding: '25px' }}>
+        
+        {/* SECTION 1: CONTESTANT MANAGEMENT (FAKE ENTRIES HATANE KE LIYE) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h2 style={{ fontFamily: 'Playfair Display', color: '#5c1522', margin: 0 }}>
+            Registered Fankaar ({contestants.length})
+          </h2>
+          <button className="small-btn" onClick={fetchAllData}>Refresh 🔄</button>
+        </div>
+
+        {contestants.length === 0 ? (
+          <p style={{ color: '#777', fontStyle: 'italic' }}>Abhi tak kisi ne register nahi kiya hai.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', paddingRight: '5px', marginBottom: '25px' }}>
+            {contestants.map((c) => {
+              const fallbackDp = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=5c1522&color=fff&size=100`;
+              return (
+                <div key={c.id} style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#fdfbf7', border: '1px solid #e2d5be', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  
+                  {/* DP aur Naam */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '150px' }}>
+                    <img 
+                      src={c.dp_url || fallbackDp} 
+                      onError={(e) => { e.target.onerror = null; e.target.src = fallbackDp; }}
+                      alt={c.name} 
+                      style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #5c1522' }} 
+                    />
+                    <div style={{ textAlign: 'left' }}>
+                      <strong style={{ color: '#2c3e50', fontSize: '1.05rem', display: 'block' }}>{c.name}</strong>
+                      <span style={{ fontSize: '0.75rem', color: '#888' }}>{c.contact}</span>
+                    </div>
+                  </div>
+
+                  {/* Audio Check Karne ke liye Mini Player */}
+                  <audio controls src={c.audio_url} style={{ height: '32px', maxWidth: '220px' }}></audio>
+
+                  {/* Remove Button */}
+                  <button 
+                    onClick={() => handleRemoveContestant(c.id, c.name)}
+                    style={{ backgroundColor: '#c0392b', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
+                  >
+                    Remove 🗑️
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* SECTION 2: GENERATE MATCHES BUTTON */}
         <button 
           className="vote-btn" 
           onClick={generateMatches} 
           disabled={loading}
-          style={{ backgroundColor: '#2c3e50', padding: '15px', fontSize: '1.1rem' }}
+          style={{ backgroundColor: '#2c3e50', padding: '15px', fontSize: '1.1rem', width: '100%' }}
         >
           {loading ? 'Match Ban Rahe Hain...' : 'Generate Matches (Random Shuffle)'}
         </button>
         
         {status && (
-          <p style={{ marginTop: '20px', color: '#6a1b29', fontWeight: 'bold', fontStyle: 'italic' }}>
+          <p style={{ marginTop: '15px', color: '#6a1b29', fontWeight: 'bold', fontStyle: 'italic' }}>
             {status}
           </p>
         )}
 
         <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #d4c4a8' }} />
 
+        {/* SECTION 3: LIVE SCOREBOARD */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ fontFamily: 'Playfair Display', color: '#5c1522', margin: 0 }}>Live Natije (Scoreboard)</h2>
-          <button className="small-btn" onClick={fetchResults}>Refresh Votes 🔄</button>
         </div>
 
         {battles.length === 0 ? (

@@ -289,3 +289,150 @@ h1 {
     font-size: 2rem;
   }
 }
+
+/* =========================================
+   MEHFIL ANIMATIONS & ROYAL EFFECTS
+   ========================================= */
+
+/* 1. Page & Arena Smooth Fade-In */
+.mehfil-container h1, 
+.mehfil-container .subtitle {
+  animation: fadeDown 0.7s ease-out forwards;
+}
+
+.battle-arena-vertical {
+  animation: arenaPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: box-shadow 0.3s ease;
+}
+
+.battle-arena-vertical:hover {
+  box-shadow: 0 15px 35px rgba(92, 21, 34, 0.15);
+}
+
+/* 2. Singers Entry (Left & Right Slide) */
+.singer-card-top {
+  animation: slideInLeft 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.singer-card-bottom {
+  animation: slideInRight 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 3. Floating DP with Hover Glow */
+.dp-box {
+  animation: gentleFloat 3.5s ease-in-out infinite;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dp-box:hover {
+  transform: scale(1.08) rotate(2deg);
+  box-shadow: 0 8px 20px rgba(106, 27, 41, 0.35);
+}
+
+/* 4. Pulsing VS Badge */
+.vs-badge {
+  animation: vsPulse 2s infinite ease-in-out;
+}
+
+/* 5. Interactive Shimmer Vote Buttons */
+.vote-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease !important;
+}
+
+.vote-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(106, 27, 41, 0.35);
+}
+
+.vote-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+/* Button ke upar se guzarne wali chamak (Shine effect) */
+.vote-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  animation: buttonShine 4s infinite;
+}
+
+.small-btn {
+  transition: all 0.2s ease !important;
+}
+
+.small-btn:hover {
+  transform: translateY(-2px);
+  background-color: #5c1522 !important;
+  color: #fff !important;
+}
+
+/* 6. Bouncy Popup Animation */
+.popup-overlay {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.popup-box {
+  animation: popupBounce 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* =========================================
+   KEYFRAMES (Animation Logic)
+   ========================================= */
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes arenaPop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-35px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(35px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes vsPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(106, 27, 41, 0.4); }
+  50% { transform: scale(1.12); box-shadow: 0 0 0 10px rgba(106, 27, 41, 0); }
+}
+
+@keyframes buttonShine {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popupBounce {
+  0% { opacity: 0; transform: scale(0.7) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}

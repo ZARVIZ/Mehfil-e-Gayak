@@ -46,7 +46,7 @@ function App() {
   const handleVote = async (choice, displayName) => {
     const currentBattle = battles[currentIndex];
 
-    // Double click ya dobara vote rokne ke liye turant LocalStorage mein lock lagana
+    // Double click ya refresh karke dobara vote rokne ke liye LocalStorage lock
     const savedVotes = JSON.parse(localStorage.getItem('mehfil_voted_ids') || '[]');
     if (savedVotes.includes(currentBattle.id)) return;
     
@@ -114,7 +114,7 @@ function App() {
     );
   }
 
-  // Agar user saare matches par vote de chuka hai (Chahe refresh hi kyun na kar le)
+  // Agar user saare matches par vote de chuka hai
   if (battles.length === 0 || currentIndex >= battles.length) {
     return (
       <div className="mehfil-container">
@@ -129,6 +129,10 @@ function App() {
 
   const currentBattle = battles[currentIndex];
 
+  // Default Initials URLs agar photo ya Insta DP na mile
+  const fallbackDpA = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentBattle.singer_a)}&background=2c3e50&color=fff&size=200`;
+  const fallbackDpB = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentBattle.singer_b)}&background=6a1b29&color=fff&size=200`;
+
   return (
     <div className="mehfil-container">
       <div className={`main-content ${showPopup ? 'blur-background' : ''}`}>
@@ -140,11 +144,18 @@ function App() {
         <h1>Mehfil-e-Gayak</h1>
         <p className="subtitle">Saji Mehfil: Kaun banega sartaaj?</p>
 
-        <div className="battle-arena-vertical">
+        {/* key={currentBattle.id} har naye match par slide animation trigger karega */}
+        <div className="battle-arena-vertical" key={currentBattle.id}>
           
           {/* Upper Half: Player 1 */}
           <div className="singer-card-top">
-            <img src={`https://ui-avatars.com/api/?name=${currentBattle.singer_a}&background=2c3e50&color=fff&size=200`} alt={currentBattle.singer_a} className="dp-box" />
+            <img 
+              src={currentBattle.dp_a || fallbackDpA} 
+              onError={(e) => { e.target.onerror = null; e.target.src = fallbackDpA; }}
+              alt={currentBattle.singer_a} 
+              className="dp-box" 
+              style={{ objectFit: 'cover' }}
+            />
             <div className="singer-details left-align">
               <h2 className="fankaar-name">{currentBattle.singer_a}</h2>
               <audio 
@@ -162,7 +173,13 @@ function App() {
 
           {/* Lower Half: Player 2 */}
           <div className="singer-card-bottom">
-            <img src={`https://ui-avatars.com/api/?name=${currentBattle.singer_b}&background=6a1b29&color=fff&size=200`} alt={currentBattle.singer_b} className="dp-box" />
+            <img 
+              src={currentBattle.dp_b || fallbackDpB} 
+              onError={(e) => { e.target.onerror = null; e.target.src = fallbackDpB; }}
+              alt={currentBattle.singer_b} 
+              className="dp-box" 
+              style={{ objectFit: 'cover' }}
+            />
             <div className="singer-details right-align">
               <h2 className="fankaar-name" style={{fontSize: currentBattle.audio_b ? '1.8rem' : '1.3rem'}}>{currentBattle.singer_b}</h2>
               

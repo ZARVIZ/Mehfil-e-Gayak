@@ -4,53 +4,101 @@ import './App.css';
 
 export default function Register() {
   const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
   const [audioFile, setAudioFile] = useState(null);
-  const [status, setStatus] = useState('');
-  const [loading, setLoading] = useState(false);
+  
+  // DP States: 'none' | 'upload' | 'insta'
+  const [dpOption, setDpOption] = useState('none');
+  const [dpFile, setDpFile] = useState(null);
+  const [instaHandle, setInstaHandle] = useState('');
 
-  const handleRegister = async (e) => {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !contact || !audioFile) {
-      setStatus('Kripya saari details bharein aur gaana upload karein.');
+    if (!audioFile) {
+      setMessage('Kripya apni aawaz (audio file) select karein!');
       return;
     }
-    
+
     setLoading(true);
-    setStatus('Fankaar ki entry darj ho rahi hai... Kripya pratiksha karein.');
+    setMessage('Aapki peshkash darj ho rahi hai...');
 
     try {
-      // 1. Audio file ko Supabase Storage mein upload karna
-      const fileExt = audioFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${name.replace(/\s+/g, '')}.${fileExt}`;
+      // 1. Audio File Upload Karna
+      const audioExt = audioFile.name.split('.').pop();
+      const audioFileName = `audio_${Date.now()}.${audioExt}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: audioErr } = await supabase.storage
         .from('audios')
-        .upload(fileName, audioFile);
+        .upload(audioFileName, audioFile);
 
-      if (uploadError) throw uploadError;
+      if (audioErr) throw audioErr;
 
-      // 2. Upload kiye hue gaane ka Public Link nikalna
-      const { data: { publicUrl } } = supabase.storage
+      const { data: audioUrlData } = supabase.storage
         .from('audios')
-        .getPublicUrl(fileName);
+        .getPublicUrl(audioFileName);
 
-      // 3. Fankaar ka naam aur link Database Table mein save karna
+      // 2. DP Decide aur Process Karna
+      let finalDpUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=5c1522&color=fff&size=200`;
+
+      if (dpOption === 'upload' && dpFile) {
+        const dpExt = dpFile.name.split('.').pop();
+        const dpFileName = `dp_${Date.now()}.${dpExt}`;
+
+        const { error: dpErr } = await supabase.storage
+          .from('audios')
+          .upload(dpFileName, dpFile);
+
+        if (dpErr) throw dpErr;
+
+        const { data: dpUrlData } = supabase.storage
+          .from('audios')
+          .getPublicUrl(dpFileName);
+
+        finalDpUrl = dpUrlData.publicUrl;
+      } else if (dpOption === 'insta' && instaHandle.trim() !== '') {
+        const cleanHandle = instaHandle.replace('@', '').trim();
+        const fallbackUrl = encodeURIComponent(finalDpUrl);
+        finalDpUrl = `https://unavatar.io/instagram/${cleanHandle}?fallback=${fallbackUrl}`;
+      }
+
+      // 3. Contestants Table mein Save Karna (Privacy ke sath)
       const { error: dbError } = await supabase
         .from('contestants')
-        .insert([{ name, contact, audio_url: publicUrl }]);
+        .insert([
+          {
+            name: name,
+            contact: dpOption === 'insta' ? `@${instaHandle.replace('@', '')}` : 'Private',
+            audio_url: audioUrlData.publicUrl,
+            dp_url: finalDpUrl
+          }
+        ]);
 
       if (dbError) throw dbError;
 
-      setStatus('Mubarak ho! Aapki entry Mehfil-e-Gayak mein safalta-purvak ho gayi hai.');
+      setMessage('Mubarak ho! Aap Mehfil-e-Gayak mein shamil ho gaye hain. 🎤');
       setName('');
-      setContact('');
       setAudioFile(null);
+      setDpFile(null);
+      setInstaHandle('');
+      setDpOption('none');
+      e.target.reset();
     } catch (error) {
-      setStatus(`Kuch gadbad hui: ${error.message}`);
+      setMessage(`Kuch gadbad hui: ${error.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #d4c4a8',
+    fontSize: '1rem',
+    boxSizing: 'border-box',
+    marginTop: '6px'
   };
 
   return (
@@ -59,51 +107,111 @@ export default function Register() {
       <p className="subtitle">Fankaar Registration</p>
 
       <div className="battle-arena-vertical" style={{ padding: '30px', textAlign: 'left' }}>
-        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           
           <div>
-            <label style={{ fontFamily: 'Playfair Display', fontWeight: 'bold', color: '#5c1522' }}>Aapka Naam:</label>
+            <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Aapka Naam (Stage Name):</label>
             <input 
               type="text" 
               value={name} 
               onChange={(e) => setName(e.target.value)} 
-              placeholder="e.g. Aakash"
-              style={{ width: '100%', padding: '10px', marginTop: '5px', borderRadius: '8px', border: '1px solid #d4c4a8', fontFamily: 'Lora' }}
+              placeholder="Jaise: Tansen..." 
+              style={inputStyle}
+              required 
             />
           </div>
 
+          {/* DP Selection Radio Buttons */}
           <div>
-            <label style={{ fontFamily: 'Playfair Display', fontWeight: 'bold', color: '#5c1522' }}>WhatsApp Number / Email:</label>
-            <input 
-              type="text" 
-              value={contact} 
-              onChange={(e) => setContact(e.target.value)} 
-              placeholder="Aapse sampark karne ke liye"
-              style={{ width: '100%', padding: '10px', marginTop: '5px', borderRadius: '8px', border: '1px solid #d4c4a8', fontFamily: 'Lora' }}
-            />
+            <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>
+              Apni Tasveer (DP) Kaise Dikhayein?
+            </label>
+            
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', backgroundColor: '#fdfbf7', padding: '12px', borderRadius: '8px', border: '1px solid #e2d5be' }}>
+              <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input 
+                  type="radio" 
+                  name="dpOption" 
+                  value="none" 
+                  checked={dpOption === 'none'} 
+                  onChange={() => setDpOption('none')} 
+                />
+                No DP (Naam ke Initials)
+              </label>
+
+              <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input 
+                  type="radio" 
+                  name="dpOption" 
+                  value="upload" 
+                  checked={dpOption === 'upload'} 
+                  onChange={() => setDpOption('upload')} 
+                />
+                Upload Photo 🖼️
+              </label>
+
+              <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input 
+                  type="radio" 
+                  name="dpOption" 
+                  value="insta" 
+                  checked={dpOption === 'insta'} 
+                  onChange={() => setDpOption('insta')} 
+                />
+                Instagram DP 📸
+              </label>
+            </div>
+
+            {dpOption === 'upload' && (
+              <div style={{ marginTop: '12px' }}>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => setDpFile(e.target.files[0])} 
+                  required 
+                />
+              </div>
+            )}
+
+            {dpOption === 'insta' && (
+              <div style={{ marginTop: '12px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Instagram username (jaise: @rohan_music)" 
+                  value={instaHandle} 
+                  onChange={(e) => setInstaHandle(e.target.value)} 
+                  style={inputStyle}
+                  required 
+                />
+                <small style={{ color: '#777', display: 'block', marginTop: '4px' }}>
+                  *Agar Insta DP load na ho payi, toh automatically aapke naam ke Initials dikhenge.
+                </small>
+              </div>
+            )}
           </div>
 
           <div>
-            <label style={{ fontFamily: 'Playfair Display', fontWeight: 'bold', color: '#5c1522' }}>Apni Aawaz (Audio File):</label>
+            <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>
+              Apni Aawaz (Audio File):
+            </label>
             <input 
               type="file" 
-              accept="audio/*"
+              accept="audio/*" 
               onChange={(e) => setAudioFile(e.target.files[0])} 
-              style={{ width: '100%', padding: '10px', marginTop: '5px', fontFamily: 'Lora' }}
+              required 
             />
           </div>
 
-          <button type="submit" className="vote-btn" disabled={loading} style={{ marginTop: '10px' }}>
-            {loading ? 'Uploading...' : 'Mehfil me Shamil Hon'}
+          <button type="submit" className="vote-btn" disabled={loading} style={{ marginTop: '10px', padding: '14px' }}>
+            {loading ? 'Upload Ho Raha Hai...' : 'Mehfil me Shamil Hon'}
           </button>
-
-          {status && (
-            <p style={{ textAlign: 'center', marginTop: '15px', color: '#2c3e50', fontStyle: 'italic', fontWeight: 'bold' }}>
-              {status}
-            </p>
-          )}
-
         </form>
+
+        {message && (
+          <p style={{ marginTop: '20px', textAlign: 'center', fontWeight: 'bold', fontStyle: 'italic', color: '#5c1522' }}>
+            {message}
+          </p>
+        )}
       </div>
     </div>
   );
