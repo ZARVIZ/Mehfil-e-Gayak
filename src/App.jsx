@@ -4,6 +4,7 @@ import './App.css'
 
 function App() {
   const [battles, setBattles] = useState([]);
+  const [totalBattles, setTotalBattles] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
@@ -17,8 +18,18 @@ function App() {
         .from('battles')
         .select('*')
         .order('id', { ascending: true });
+
       if (!error && data) {
-        setBattles(data);
+        setTotalBattles(data.length);
+
+        // Browser se pehle diye gaye votes ki list nikalna
+        const savedVotes = JSON.parse(localStorage.getItem('mehfil_voted_ids') || '[]');
+
+        // Har match ko uska asli number dena aur jinpe vote ho chuka hai unhe hatana
+        const numberedData = data.map((b, idx) => ({ ...b, matchNumber: idx + 1 }));
+        const pendingBattles = numberedData.filter(b => !savedVotes.includes(b.id));
+
+        setBattles(pendingBattles);
       }
       setLoading(false);
     };
@@ -33,6 +44,15 @@ function App() {
   };
 
   const handleVote = async (choice, displayName) => {
+    const currentBattle = battles[currentIndex];
+
+    // Double click ya dobara vote rokne ke liye turant LocalStorage mein lock lagana
+    const savedVotes = JSON.parse(localStorage.getItem('mehfil_voted_ids') || '[]');
+    if (savedVotes.includes(currentBattle.id)) return;
+    
+    savedVotes.push(currentBattle.id);
+    localStorage.setItem('mehfil_voted_ids', JSON.stringify(savedVotes));
+
     setVotedName(displayName);
     setShowPopup(true); 
 
@@ -40,9 +60,6 @@ function App() {
       currentlyPlaying.current.pause();
     }
 
-    const currentBattle = battles[currentIndex];
-
-    // Database se taja votes laakar +1 karna
     try {
       const { data: latestBattle } = await supabase
         .from('battles')
@@ -87,7 +104,8 @@ function App() {
     );
   }
 
-  if (battles.length === 0) {
+  // Agar Admin ne abhi tak ek bhi match nahi banaya hai
+  if (totalBattles === 0) {
     return (
       <div className="mehfil-container">
         <h1>Mehfil-e-Gayak</h1>
@@ -96,11 +114,15 @@ function App() {
     );
   }
 
-  if (currentIndex >= battles.length) {
+  // Agar user saare matches par vote de chuka hai (Chahe refresh hi kyun na kar le)
+  if (battles.length === 0 || currentIndex >= battles.length) {
     return (
       <div className="mehfil-container">
         <h1>Mehfil-e-Gayak</h1>
-        <p className="subtitle" style={{marginTop: '40px'}}>Aaj ki mehfil muqammal hui. Result ka intezaar karein!</p>
+        <p className="subtitle" style={{marginTop: '40px'}}>
+          Aap sabhi muqablon mein apna keemti vote de chuke hain! 🎉<br/>
+          Ab natijon ka intezaar karein.
+        </p>
       </div>
     );
   }
@@ -112,7 +134,7 @@ function App() {
       <div className={`main-content ${showPopup ? 'blur-background' : ''}`}>
         
         <p style={{fontSize: '0.8rem', color: '#777', marginBottom: '10px'}}>
-          Peshkash {currentIndex + 1} / {battles.length}
+          Peshkash {currentBattle.matchNumber} / {totalBattles}
         </p>
 
         <h1>Mehfil-e-Gayak</h1>
@@ -156,7 +178,10 @@ function App() {
                   <button className="vote-btn" onClick={() => handleVote('B', currentBattle.singer_b)}>Vote {currentBattle.singer_b}</button>
                 </>
               ) : (
-                <p style={{fontStyle: 'italic', color: '#6a1b29'}}>Wildcard Entry (Bina lade seedha agle round mein!)</p>
+                <div>
+                  <p style={{fontStyle: 'italic', color: '#6a1b29', marginBottom: '10px'}}>Wildcard Entry (Bina lade seedha agle round mein!)</p>
+                  <button className="small-btn" onClick={() => handleVote('NOTA', 'Agle Muqable')}>Aage Badhein ➔</button>
+                </div>
               )}
             </div>
           </div>

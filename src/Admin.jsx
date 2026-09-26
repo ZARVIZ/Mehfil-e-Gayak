@@ -3,9 +3,43 @@ import { supabase } from './supabaseClient';
 import './App.css';
 
 export default function Admin() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  // YAHAN APNA SECRET PASSWORD SET KAREIN:
+  const SECRET_PASS = "mehfil2026";
+
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [battles, setBattles] = useState([]);
+
+  useEffect(() => {
+    // Check agar is session mein pehle se login hai
+    const savedAuth = sessionStorage.getItem('mehfil_admin_auth');
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true);
+      fetchResults();
+    }
+  }, []);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (passwordInput === SECRET_PASS) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('mehfil_admin_auth', 'true');
+      setAuthError('');
+      fetchResults();
+    } else {
+      setAuthError('Galat Password! Sirf Admin ko ijazat hai.');
+      setPasswordInput('');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('mehfil_admin_auth');
+  };
 
   const fetchResults = async () => {
     const { data, error } = await supabase
@@ -17,11 +51,10 @@ export default function Admin() {
     }
   };
 
-  useEffect(() => {
-    fetchResults();
-  }, []);
-
   const generateMatches = async () => {
+    const confirmGen = window.confirm("Kya aap sach mein naye matches banana chahte hain? Purane matches aur votes mit jayenge!");
+    if (!confirmGen) return;
+
     setLoading(true);
     setStatus('Fankaaron ko ikattha kiya jaa raha hai...');
 
@@ -87,8 +120,55 @@ export default function Admin() {
     }
   };
 
+  // 1. AGAR LOGIN NAHI HAI TOH PASSWORD SCREEN DIKHAO
+  if (!isAuthenticated) {
+    return (
+      <div className="mehfil-container">
+        <h1>Khufiya Darwaza</h1>
+        <p className="subtitle">Control Room mein jane ke liye password darj karein</p>
+
+        <div className="battle-arena-vertical" style={{ padding: '30px', maxWidth: '400px', margin: '0 auto' }}>
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <input 
+              type="password" 
+              placeholder="Secret Password..." 
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              style={{
+                padding: '12px 15px',
+                borderRadius: '8px',
+                border: '1px solid #d4c4a8',
+                fontSize: '1rem',
+                textAlign: 'center',
+                outline: 'none'
+              }}
+              required
+            />
+            <button type="submit" className="vote-btn" style={{ padding: '12px' }}>
+              Darwaza Kholein 🔓
+            </button>
+          </form>
+
+          {authError && (
+            <p style={{ marginTop: '15px', color: '#a91d22', fontWeight: 'bold', fontStyle: 'italic' }}>
+              {authError}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. AGAR PASSWORD SAHI HAI TOH CONTROL ROOM DIKHAO
   return (
     <div className="mehfil-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <span style={{ fontSize: '0.85rem', color: '#27ae60', fontWeight: 'bold' }}>● Admin Unlocked</span>
+        <button className="small-btn" onClick={handleLogout} style={{ padding: '5px 12px', fontSize: '0.8rem' }}>
+          Lock Room 🔒
+        </button>
+      </div>
+
       <h1>Control Room</h1>
       <p className="subtitle">Sirf Admin Ke Liye</p>
 
