@@ -1,5 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Poppins:wght@400;500;600&display=swap');
 
+html, body, #root {
+  display: block !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -10,390 +19,320 @@ body {
   background-color: #efe8d8;
   color: #2c3e50;
   font-family: 'Poppins', sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
+  transition: background 0.5s ease, color 0.5s ease;
 }
 
 /* =========================================
-   MAIN CONTAINER & TYPOGRAPHY
+   DYNAMIC TENSE ROUND THEMES (Point 7)
    ========================================= */
+.theme-wrapper {
+  min-height: calc(100vh - 60px);
+  width: 100%;
+  padding-bottom: 50px;
+  transition: all 0.5s ease;
+}
+
+/* Round 1: Classic Royal Mehfil */
+.theme-round-1 {
+  background-color: #efe8d8;
+}
+
+/* Quarter-Final: Midnight Storm (Tense Blue) */
+.theme-quarter {
+  background: radial-gradient(circle at top, #1b2838 0%, #0f1722 100%);
+  color: #f0f4f8;
+}
+.theme-quarter h1, .theme-quarter .subtitle { color: #66c0f4 !important; }
+.theme-quarter .battle-arena-vertical { background: #16222f; border-color: #2a475e; color: #fff; }
+
+/* Semi-Final: Fiery Agniveer (High Voltage Crimson) */
+.theme-semi {
+  background: radial-gradient(circle at top, #4a0e17 0%, #1f0508 100%);
+  color: #fde8e9;
+}
+.theme-semi h1, .theme-semi .subtitle { color: #ff6b6b !important; }
+.theme-semi .battle-arena-vertical { background: #2d0910; border-color: #801b2a; color: #fff; }
+
+/* Grand Finale: Pitch Black & Royal Gold (Ultimate Showdown) */
+.theme-final {
+  background: radial-gradient(circle at top, #221c10 0%, #0a0906 100%);
+  color: #fdf5e6;
+}
+.theme-final h1 { color: #ffd700 !important; text-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+.theme-final .subtitle { color: #e6c27a !important; }
+.theme-final .battle-arena-vertical {
+  background: #14110b;
+  border: 2px solid #d4af37;
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.25);
+  color: #fff;
+}
+
+/* =========================================
+   BRANDING & TIMER BANNER
+   ========================================= */
+.brand-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #d4af37;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  margin-bottom: 8px;
+}
+
+.timer-pill {
+  display: inline-block;
+  background: #5c1522;
+  color: #ffd700;
+  padding: 6px 16px;
+  border-radius: 25px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+  border: 1px solid #d4af37;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
 .mehfil-container {
-  max-width: 550px;
+  max-width: 560px;
   width: 100%;
   margin: 0 auto;
-  padding: 25px 16px 50px 16px;
+  padding: 20px 15px 50px 15px;
   text-align: center;
 }
 
 .mehfil-container h1 {
   font-family: 'Playfair Display', serif;
-  font-size: 2.6rem;
+  font-size: 2.3rem;
   color: #5c1522;
-  margin-bottom: 5px;
-  letter-spacing: 0.5px;
-  animation: fadeDown 0.6s ease-out forwards;
+  margin-bottom: 4px;
 }
 
 .subtitle {
   font-family: 'Playfair Display', serif;
   font-style: italic;
   color: #6a5a4c;
-  font-size: 1.05rem;
-  margin-bottom: 22px;
-  animation: fadeDown 0.6s ease-out forwards;
+  font-size: 1rem;
+  margin-bottom: 18px;
 }
 
 /* =========================================
-   BATTLE ARENA CARD
+   BATTLE ARENA & SINGER CARDS
    ========================================= */
 .battle-arena-vertical {
   background: #ffffff;
   border-radius: 18px;
-  padding: 24px 20px;
-  box-shadow: 0 10px 30px rgba(92, 21, 34, 0.08);
+  padding: 22px 18px;
+  box-shadow: 0 10px 30px rgba(92, 21, 34, 0.1);
   border: 1px solid #e6dec8;
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  animation: arenaPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: arenaPop 0.45s ease-out forwards;
 }
 
-/* =========================================
-   SINGER CARDS (DESKTOP & TABLET)
-   ========================================= */
 .singer-card-top,
 .singer-card-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px;
+  gap: 15px;
+  padding: 16px;
   border-radius: 14px;
   width: 100%;
+  color: #2c3e50;
 }
 
 .singer-card-top {
   background: linear-gradient(135deg, #f5f8fa 0%, #e9f0f5 100%);
   border: 1px solid #d5e2ed;
-  animation: slideInLeft 0.5s ease-out forwards;
 }
 
 .singer-card-bottom {
   background: linear-gradient(135deg, #fdf5f6 0%, #f9e8ea 100%);
   border: 1px solid #f0cfd4;
   flex-direction: row-reverse;
-  animation: slideInRight 0.5s ease-out forwards;
 }
 
-/* Avatar / DP */
 .dp-box {
-  width: 85px;
-  height: 85px;
-  min-width: 85px;
+  width: 82px;
+  height: 82px;
+  min-width: 82px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid #ffffff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  animation: gentleFloat 3.5s ease-in-out infinite;
 }
 
-/* Singer Info & Controls */
 .singer-details {
   flex: 1;
-  min-width: 0; /* Overflow rokne ke liye sabse zaruri */
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.left-align {
-  text-align: left;
-  align-items: flex-start;
-}
-
-.right-align {
-  text-align: right;
-  align-items: flex-end;
-}
+.left-align { text-align: left; align-items: flex-start; }
+.right-align { text-align: right; align-items: flex-end; }
 
 .fankaar-name {
   font-family: 'Playfair Display', serif;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   color: #2c3e50;
   margin: 0;
   width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.singer-card-bottom .fankaar-name {
-  color: #5c1522;
+.social-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-/* Audio Player */
+.insta-follow-btn, .dm-request-btn {
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 15px;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.2s ease;
+}
+
+.insta-follow-btn {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  color: #fff;
+}
+
+.dm-request-btn {
+  background-color: #2c3e50;
+  color: #fff;
+}
+
+.insta-follow-btn:hover, .dm-request-btn:hover {
+  transform: scale(1.05);
+}
+
 .audio-player.compact {
   width: 100%;
-  max-width: 100%;
-  height: 38px;
+  height: 36px;
   border-radius: 20px;
-  outline: none;
 }
 
-/* =========================================
-   BUTTONS & VS BADGE
-   ========================================= */
 .vote-btn {
   width: 100%;
   background-color: #6a1b29;
   color: #ffffff;
   border: none;
-  padding: 11px 16px;
+  padding: 10px 14px;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
-.singer-card-top .vote-btn {
-  background-color: #2c3e50;
-}
-
-.vote-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(106, 27, 41, 0.25);
-}
-
-.vote-btn:active {
-  transform: scale(0.98);
-}
-
-.vote-btn::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.25), transparent);
-  transform: skewX(-25deg);
-  animation: buttonShine 4s infinite;
+.singer-card-top .vote-btn { background-color: #2c3e50; }
+.vote-btn:disabled {
+  background-color: #95a5a6 !important;
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .vs-badge {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   background-color: #5c1522;
-  color: #fdfbf7;
+  color: #ffd700;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Playfair Display', serif;
   font-weight: bold;
-  font-size: 1rem;
   margin: -6px auto;
   z-index: 2;
-  border: 3px solid #ffffff;
-  animation: vsPulse 2s infinite ease-in-out;
+  border: 2px solid #ffffff;
 }
 
 .bottom-actions {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
 }
 
 .small-btn {
   background-color: transparent;
-  color: #5c1522;
-  border: 1.5px solid #5c1522;
-  padding: 8px 22px;
+  color: inherit;
+  border: 1.5px solid currentColor;
+  padding: 7px 16px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.small-btn:hover {
-  background-color: #5c1522;
-  color: #ffffff;
 }
 
 /* =========================================
    POPUP OVERLAY
    ========================================= */
-.blur-background {
-  filter: blur(5px);
-  pointer-events: none;
-  user-select: none;
-}
-
 .popup-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.45);
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: 20px;
-  animation: fadeIn 0.25s ease-out forwards;
+  padding: 16px;
 }
 
 .popup-box {
   background: #fdfbf7;
-  padding: 28px 24px;
+  color: #2c3e50;
+  padding: 24px 20px;
   border-radius: 16px;
   text-align: center;
-  max-width: 360px;
+  max-width: 380px;
   width: 100%;
   border: 2px solid #5c1522;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.25);
-  animation: popupBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 /* =========================================
-   📱 MOBILE VIEW FIX (SCREENS < 600px)
+   📱 MOBILE VIEW (100% SYMMETRICAL)
    ========================================= */
 @media (max-width: 600px) {
-  /* Top Menu Bar ko mobile par ek line mein fit karna */
-  nav {
-    gap: 8px !important;
-    padding: 10px 8px !important;
-    flex-wrap: wrap;
-  }
+  .mehfil-container { padding: 14px 10px 40px 10px; }
+  .mehfil-container h1 { font-size: 1.85rem; }
+  .battle-arena-vertical { padding: 15px 12px !important; }
 
-  nav a {
-    padding: 6px 12px !important;
-    font-size: 0.82rem !important;
-    flex: 1;
-    text-align: center;
-    white-space: nowrap;
-  }
-
-  .mehfil-container {
-    padding: 16px 12px 40px 12px;
-  }
-
-  .mehfil-container h1 {
-    font-size: 2rem;
-  }
-
-  .subtitle {
-    font-size: 0.95rem;
-    margin-bottom: 16px;
-  }
-
-  /* Inline 30px padding ko override karke mobile par jagah banana */
-  .battle-arena-vertical {
-    padding: 16px 12px !important;
-    border-radius: 14px;
-    gap: 12px;
-  }
-
-  /* Mobile par dono cards ko ekdum barabar (Symmetrical Center) karna */
   .singer-card-top,
   .singer-card-bottom {
     flex-direction: column !important;
     text-align: center !important;
     align-items: center !important;
-    padding: 16px 14px;
-    gap: 10px;
+    padding: 15px 12px;
   }
 
-  .singer-details,
-  .left-align,
-  .right-align {
+  .singer-details, .left-align, .right-align {
     width: 100%;
     text-align: center !important;
     align-items: center !important;
   }
 
-  .dp-box {
-    width: 72px;
-    height: 72px;
-    min-width: 72px;
-  }
-
-  .fankaar-name {
-    font-size: 1.35rem !important;
-    white-space: normal;
-  }
-
-  .audio-player.compact {
-    width: 100%;
-    height: 36px;
-  }
-
-  .vote-btn {
-    padding: 12px;
-    font-size: 0.95rem;
-  }
-
-  .bottom-actions {
-    width: 100%;
-  }
-
-  .bottom-actions .small-btn {
-    flex: 1;
-    padding: 10px;
+  .social-row {
+    justify-content: center;
   }
 }
 
-/* =========================================
-   KEYFRAMES
-   ========================================= */
-@keyframes fadeDown {
-  from { opacity: 0; transform: translateY(-12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 @keyframes arenaPop {
-  from { opacity: 0; transform: scale(0.97); }
-  to { opacity: 1; transform: scale(1); }
-}
-@keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-25px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(25px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes gentleFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
-}
-@keyframes vsPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(92, 21, 34, 0.4); }
-  50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(92, 21, 34, 0); }
-}
-@keyframes buttonShine {
-  0% { left: -100%; }
-  20% { left: 200%; }
-  100% { left: 200%; }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes popupBounce {
-  0% { opacity: 0; transform: scale(0.8); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-html, body, #root {
-  display: block !important;
-  width: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
