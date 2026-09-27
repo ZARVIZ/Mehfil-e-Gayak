@@ -71,8 +71,8 @@ body {
    BRANDING & TIMER BANNER
    ========================================= */
 .brand-logo {
-  width: 58px;
-  height: 58px;
+  width: 85px;
+  height: 85px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #d4af37;
