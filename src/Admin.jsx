@@ -192,7 +192,7 @@ export default function Admin() {
           </button>
 
           <button className="vote-btn" style={{ backgroundColor: '#2c3e50' }} onClick={startVerifiedRoundBattles} disabled={loading}>
-            🎲 2. Songs Verified -> Start 24h Battles Now ({contestants.length} Fankaar)
+            🎲 2. Songs Verified ➔ Start 24h Battles Now ({contestants.length} Fankaar)
           </button>
 
           {settings?.phase === 'voting' && (
