@@ -31,7 +31,7 @@ export const runAutoPilotCheck = async () => {
 
     if (!currentBattles || currentBattles.length === 0) return settings;
 
-    // CASE A: GRAND FINALE KHATAM -> AUTO CROWN WINNER (WITH FINALE SONG) & RUNNER-UP
+    // CASE A: GRAND FINALE KHATAM -> AUTO CROWN WINNER & CLEAR EVERYTHING!
     if (currentBattles.length === 1) {
       const finalMatch = currentBattles[0];
       const aWon = (finalMatch.votes_a || 0) >= (finalMatch.votes_b || 0) || !finalMatch.audio_b;
@@ -49,17 +49,16 @@ export const runAutoPilotCheck = async () => {
         winner_name: winner.name,
         winner_insta: winner.insta || '',
         winner_dp: winner.dp || '',
-        winner_audio: winner.audio || '', // Sirf Winner ka Finale Song save hoga!
+        winner_audio: winner.audio || '',
         runner_up_name: runnerUp.name !== 'Wildcard Entry' ? runnerUp.name : '',
         runner_up_insta: runnerUp.insta || '',
         runner_up_dp: runnerUp.dp || ''
       }]);
 
+      // Purane battles, contestants aur requests sab saaf kar do
       await supabase.from('battles').delete().neq('id', 0);
       await supabase.from('contestants').delete().neq('id', 0);
-
-      const prevHistory = Array.isArray(settings.bracket_history) ? settings.bracket_history : [];
-      const updatedHistory = [...prevHistory, currentBattles];
+      await supabase.from('vote_requests').delete().neq('id', 0);
 
       const { data: updated } = await supabase
         .from('mehfil_settings')
@@ -67,7 +66,7 @@ export const runAutoPilotCheck = async () => {
           phase: 'completed',
           round_name: `👑 Sartaaj: ${winner.name}`,
           phase_end_time: null,
-          bracket_history: updatedHistory
+          bracket_history: [] // Tournament khatam hote hi Bracket History bilkul saaf!
         })
         .eq('id', 1)
         .select()

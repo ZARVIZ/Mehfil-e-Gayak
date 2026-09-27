@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { runAutoPilotCheck } from './autoPilot'
 import BracketCard from './BracketCard'
@@ -76,6 +77,7 @@ function App() {
       if (diff <= 0) {
         setTimeLeft('Samay समाप्त (Voting Ended)');
         clearInterval(interval);
+        initMehfil(voterId);
       } else {
         const hrs = Math.floor(diff / (1000 * 60 * 60));
         const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -140,7 +142,6 @@ function App() {
         if (choice === 'BOTH') { vA += 1; vB += 1; }
 
         await supabase.from('battles').update({ votes_a: vA, votes_b: vB }).eq('id', currentBattle.id);
-        // Bracket mein bhi turant vote update dikhane ke liye
         setBattles(prev => prev.map(item => item.id === currentBattle.id ? { ...item, votes_a: vA, votes_b: vB } : item));
       }
     } catch (err) {
@@ -188,49 +189,75 @@ function App() {
     );
   }
 
+  // Check if tournament is actually running (Not closed and Not completed)
+  const isTournamentActive = settings.phase !== 'closed' && settings.phase !== 'completed';
+
   return (
     <div className={getThemeClass()}>
-      <div className="mehfil-container" style={{ maxWidth: showBracket ? '980px' : '560px', transition: 'max-width 0.3s ease' }}>
+      <div className="mehfil-container" style={{ maxWidth: (isTournamentActive && showBracket) ? '980px' : '560px', transition: 'max-width 0.3s ease' }}>
         
-        <img src={heroLogo} alt="Mehfil Logo" className="brand-logo" />
+        <img src={heroLogo} alt="Mehfil Logo" className="brand-logo" style={{ width: '85px', height: '85px' }} />
         <h1>Mehfil-e-Gayak</h1>
-        <p className="subtitle">🔥 {settings.round_name} — Kaun Banega Sartaaj?</p>
+        <p className="subtitle">
+          {settings.phase === 'completed' 
+            ? `🎉 ${settings.round_name} — Season Sampann Hua!` 
+            : settings.phase === 'closed'
+              ? 'Agli Mehfil Jald Sajegi!'
+              : `🔥 ${settings.round_name} — Kaun Banega Sartaaj?`}
+        </p>
 
-        {timeLeft && (
+        {isTournamentActive && timeLeft && (
           <div className="timer-pill">⏳ Samay Bacha Hai: {timeLeft}</div>
         )}
 
-        {/* Toggle Button for Dynamic Matchmaking Bracket */}
-        <div style={{ marginBottom: '15px' }}>
-          <button 
-            className="small-btn" 
-            onClick={() => setShowBracket(!showBracket)}
-            style={{ backgroundColor: showBracket ? '#5c1522' : 'transparent', color: showBracket ? '#ffd700' : 'inherit' }}
-          >
-            {showBracket ? '🔼 Hide Tournament Bracket' : '🗺️ Show Matchmaking Bracket Tree'}
-          </button>
-        </div>
+        {/* SIRF ACTIVE TOURNAMENT MEIN HI BRACKET DIKHEGA (Khatam hone par gayab ho jayega!) */}
+        {isTournamentActive && (
+          <>
+            <div style={{ marginBottom: '15px' }}>
+              <button 
+                className="small-btn" 
+                onClick={() => setShowBracket(!showBracket)}
+                style={{ backgroundColor: showBracket ? '#5c1522' : 'transparent', color: showBracket ? '#ffd700' : 'inherit' }}
+              >
+                {showBracket ? '🔼 Hide Tournament Bracket' : '🗺️ Show Matchmaking Bracket Tree'}
+              </button>
+            </div>
 
-        {/* DYNAMIC SYMMETRICAL BRACKET CARD */}
-        {showBracket && (
-          <BracketCard 
-            battles={battles} 
-            contestants={contestants} 
-            bracketHistory={settings.bracket_history || []}
-            isVotingEnded={timeLeft === 'Samay समाप्त (Voting Ended)' || settings.phase === 'completed'}
-            onSelectBattle={(idx) => {
-              if (idx >= 0 && idx < battles.length) setCurrentIndex(idx);
-            }}
-          />
+            {showBracket && (
+              <BracketCard 
+                battles={battles} 
+                contestants={contestants} 
+                bracketHistory={settings.bracket_history || []}
+                isVotingEnded={timeLeft === 'Samay समाप्त (Voting Ended)'}
+                onSelectBattle={(idx) => {
+                  if (idx >= 0 && idx < battles.length) setCurrentIndex(idx);
+                }}
+              />
+            )}
+          </>
         )}
 
         {battles.length === 0 ? (
           <div className="battle-arena-vertical" style={{ maxWidth: '560px', margin: '0 auto' }}>
-            <p className="subtitle" style={{ margin: '15px 0' }}>
-              {settings.phase === 'registration' 
-                ? 'Upar Bracket mein dekhein jaise-jaise fankaar jud rahe hain! Registration ke baad muqable shuru honge.' 
-                : 'Mehfil abhi saj rahi hai. Admin ke ishare ka intezaar karein!'}
-            </p>
+            {settings.phase === 'completed' ? (
+              <div style={{ padding: '15px 10px' }}>
+                <h3 style={{ color: '#5c1522', marginBottom: '8px' }}>🏆 Season Ka Natija Aa Chuka Hai!</h3>
+                <p style={{ color: '#666', fontSize: '0.95rem', marginBottom: '16px' }}>
+                  Is season ke Sartaaj (Winner) aur Runner-Up ko dekhne aur Winner ka Finale gaana sunne ke liye Sartaaj tab mein jayein!
+                </p>
+                <Link to="/winners" className="vote-btn" style={{ display: 'inline-block', textDecoration: 'none', width: 'auto', padding: '10px 24px', backgroundColor: '#d4af37', color: '#000' }}>
+                  👑 View Winner in Sartaaj Tab
+                </Link>
+              </div>
+            ) : (
+              <p className="subtitle" style={{ margin: '15px 0' }}>
+                {settings.phase === 'registration' 
+                  ? 'Upar Bracket mein dekhein jaise-jaise fankaar jud rahe hain! Registration ke baad muqable shuru honge.' 
+                  : settings.phase === 'next_round_upload'
+                    ? 'Promoted Winners agle round ke liye apna naya gaana upload kar rahe hain!'
+                    : 'Mehfil abhi saj rahi hai. Admin ke ishare ka intezaar karein!'}
+              </p>
+            )}
           </div>
         ) : (
           <div style={{ maxWidth: '560px', margin: '0 auto' }}>
