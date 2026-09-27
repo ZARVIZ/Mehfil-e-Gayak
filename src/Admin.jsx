@@ -23,16 +23,27 @@ export default function Admin() {
   }, []);
 
   const fetchAllData = async () => {
+    // Auto-Pilot Check: Agar 24h voting khatam ho gayi hai toh winners promote karega ya Finale winner declare karega
     const sData = await runAutoPilotCheck();
     if (sData) setSettings(sData);
 
-    const { data: cData } = await supabase.from('contestants').select('*').order('id', { ascending: true });
+    const { data: cData } = await supabase
+      .from('contestants')
+      .select('*')
+      .order('id', { ascending: true });
     if (cData) setContestants(cData);
 
-    const { data: bData } = await supabase.from('battles').select('*').order('id', { ascending: true });
+    const { data: bData } = await supabase
+      .from('battles')
+      .select('*')
+      .order('id', { ascending: true });
     if (bData) setBattles(bData);
 
-    const { data: rData } = await supabase.from('vote_requests').select('*').eq('status', 'pending').order('id', { ascending: false });
+    const { data: rData } = await supabase
+      .from('vote_requests')
+      .select('*')
+      .eq('status', 'pending')
+      .order('id', { ascending: false });
     if (rData) setVoteRequests(rData);
   };
 
@@ -47,8 +58,14 @@ export default function Admin() {
     }
   };
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('mehfil_admin_auth');
+  };
+
+  // 1. Start Fresh Season (Open 24h Registration & Clear Old Bracket History)
   const startNewSeasonRegistration = async () => {
-    if (!window.confirm("Naya Season shuru karein? Purane contestants aur battles hat jayenge aur 24h ke liye Registration khul jayega!")) return;
+    if (!window.confirm("Naya Season shuru karein? Purane contestants, battles aur bracket history saaf ho jayenge aur 24h ke liye Registration khul jayega!")) return;
 
     await supabase.from('battles').delete().neq('id', 0);
     await supabase.from('contestants').delete().neq('id', 0);
@@ -58,13 +75,15 @@ export default function Admin() {
     await supabase.from('mehfil_settings').update({
       phase: 'registration',
       round_name: 'Round 1',
-      phase_end_time: endTime
+      phase_end_time: endTime,
+      bracket_history: []
     }).eq('id', 1);
 
     setStatus('✅ Naya Season shuru! Agle 24 ghante ke liye Registration khul gaya hai.');
     fetchAllData();
   };
 
+  // 2. Start 24h Round Battles (After Verifying Songs & Disqualifying Invalid Entries)
   const startVerifiedRoundBattles = async () => {
     if (contestants.length < 2) {
       alert('Battle shuru karne ke liye kam se kam 2 valid fankaar hone chahiye!');
@@ -87,15 +106,33 @@ export default function Admin() {
       for (let i = 0; i < shuffled.length; i += 2) {
         if (i + 1 < shuffled.length) {
           newBattles.push({
-            singer_a: shuffled[i].name, audio_a: shuffled[i].audio_url, dp_a: shuffled[i].dp_url, insta_a: shuffled[i].insta_handle, pin_a: shuffled[i].secret_pin,
-            singer_b: shuffled[i+1].name, audio_b: shuffled[i+1].audio_url, dp_b: shuffled[i+1].dp_url, insta_b: shuffled[i+1].insta_handle, pin_b: shuffled[i+1].secret_pin,
-            votes_a: 0, votes_b: 0
+            singer_a: shuffled[i].name,
+            audio_a: shuffled[i].audio_url,
+            dp_a: shuffled[i].dp_url,
+            insta_a: shuffled[i].insta_handle,
+            pin_a: shuffled[i].secret_pin,
+            singer_b: shuffled[i + 1].name,
+            audio_b: shuffled[i + 1].audio_url,
+            dp_b: shuffled[i + 1].dp_url,
+            insta_b: shuffled[i + 1].insta_handle,
+            pin_b: shuffled[i + 1].secret_pin,
+            votes_a: 0,
+            votes_b: 0
           });
         } else {
           newBattles.push({
-            singer_a: shuffled[i].name, audio_a: shuffled[i].audio_url, dp_a: shuffled[i].dp_url, insta_a: shuffled[i].insta_handle, pin_a: shuffled[i].secret_pin,
-            singer_b: "Wildcard Entry", audio_b: "", dp_b: "", insta_b: "", pin_b: "",
-            votes_a: 1, votes_b: 0
+            singer_a: shuffled[i].name,
+            audio_a: shuffled[i].audio_url,
+            dp_a: shuffled[i].dp_url,
+            insta_a: shuffled[i].insta_handle,
+            pin_a: shuffled[i].secret_pin,
+            singer_b: "Wildcard Entry",
+            audio_b: "",
+            dp_b: "",
+            insta_b: "",
+            pin_b: "",
+            votes_a: 1,
+            votes_b: 0
           });
         }
       }
@@ -122,27 +159,30 @@ export default function Admin() {
     }
   };
 
+  // Testing Shortcut: Force End 24h Voting Early to Test Auto-Promote & Finale Crown
   const forceEndCurrentVotingRound = async () => {
     if (!window.confirm("Kya aap abhi turant voting khatam karke Winners ko agle round mein Auto-Promote (ya Finale ho toh Sartaaj declare) karna chahte hain?")) return;
     const pastTime = new Date(Date.now() - 1000).toISOString();
     await supabase.from('mehfil_settings').update({ phase_end_time: pastTime }).eq('id', 1);
     await fetchAllData();
-    setStatus('⚡ Winners automatically promote ho gaye hain! Ab wo apne Secret PIN se naya gaana daal sakte hain.');
+    setStatus('⚡ Round समाप्त! Winners automatically promote ho gaye hain (ya Finale tha toh Sartaaj declare ho gaya hai)!');
   };
 
+  // Disqualify / Remove Fake or Invalid Contestant
   const handleDisqualify = async (id, name) => {
     if (!window.confirm(`Kya aap "${name}" ko Disqualify / Remove karna chahte hain?`)) return;
     await supabase.from('contestants').delete().eq('id', id);
     fetchAllData();
   };
 
-  // Agar kisi singer ne galti se galat gaana daal diya aur wo dobara upload karna chahe
+  // Unlock Song Re-upload for a Promoted Winner
   const handleUnlockReupload = async (id, name) => {
     await supabase.from('contestants').update({ song_updated: false }).eq('id', id);
-    alert(`${name} ka upload lock khol diya gaya hai. Ab wo apna PIN daal kar dobara gaana upload kar sakta hai.`);
+    alert(`${name} ka upload lock khol diya gaya hai. Ab wo apna Secret PIN daal kar dobara naya gaana upload kar sakta hai.`);
     fetchAllData();
   };
 
+  // Approve Voter's Vote Change Request
   const handleApproveVoteChange = async (req) => {
     const { data: b } = await supabase.from('battles').select('*').eq('id', req.battle_id).single();
     if (b) {
@@ -164,9 +204,17 @@ export default function Admin() {
     return (
       <div className="mehfil-container">
         <h1>Khufiya Darwaza</h1>
+        <p className="subtitle">Control Room mein jane ke liye password darj karein</p>
         <div className="battle-arena-vertical" style={{ maxWidth: '380px', margin: '20px auto' }}>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input type="password" placeholder="Admin Password..." value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ccc', textAlign: 'center' }} required />
+            <input 
+              type="password" 
+              placeholder="Admin Password..." 
+              value={passwordInput} 
+              onChange={(e) => setPasswordInput(e.target.value)} 
+              style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ccc', textAlign: 'center', fontSize: '1rem' }} 
+              required 
+            />
             <button type="submit" className="vote-btn">Unlock 🔓</button>
           </form>
         </div>
@@ -176,6 +224,13 @@ export default function Admin() {
 
   return (
     <div className="mehfil-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <span style={{ fontSize: '0.85rem', color: '#27ae60', fontWeight: 'bold' }}>● Admin Unlocked</span>
+        <button className="small-btn" onClick={handleLogout} style={{ padding: '5px 12px', fontSize: '0.8rem' }}>
+          Lock Room 🔒
+        </button>
+      </div>
+
       <h1>Admin Control Room</h1>
       <p className="subtitle">PIN Security, Song Verification & Disqualification</p>
 
@@ -201,10 +256,10 @@ export default function Admin() {
             </button>
           )}
 
-          {status && <p style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.9rem' }}>{status}</p>}
+          {status && <p style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.9rem', marginTop: '4px' }}>{status}</p>}
         </div>
 
-        <hr style={{ margin: '15px 0' }} />
+        <hr style={{ margin: '15px 0', border: 'none', borderTop: '1px solid #e2d5be' }} />
 
         {/* 2. VERIFY SONGS & DISQUALIFY INVALID ENTRIES */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -216,7 +271,7 @@ export default function Admin() {
 
         <div style={{ maxHeight: '320px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {contestants.length === 0 ? (
-            <p style={{ color: '#888', fontStyle: 'italic' }}>Abhi koi fankaar list mein nahi hai.</p>
+            <p style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>Abhi koi fankaar list mein nahi hai.</p>
           ) : (
             contestants.map(c => (
               <div key={c.id} style={{ padding: '12px', background: '#fdfbf7', border: '1px solid #e2d5be', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -226,7 +281,7 @@ export default function Admin() {
                     🔑 PIN: {c.secret_pin || 'N/A'}
                   </span>
                   <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: c.song_updated ? '#27ae60' : '#e67e22', marginTop: '4px' }}>
-                    {c.song_updated ? '🔒 New Song Uploaded & Locked' : '⏳ Waiting for New Round Song...'}
+                    {c.song_updated ? '🔒 Song Uploaded & Ready' : '⏳ Waiting for New Round Song...'}
                   </div>
                 </div>
 
@@ -253,7 +308,7 @@ export default function Admin() {
           )}
         </div>
 
-        <hr style={{ margin: '15px 0' }} />
+        <hr style={{ margin: '15px 0', border: 'none', borderTop: '1px solid #e2d5be' }} />
 
         {/* 3. VOTE CHANGE REQUESTS */}
         <h3 style={{ color: '#5c1522' }}>🔄 Vote Change Requests ({voteRequests.length})</h3>
@@ -273,16 +328,20 @@ export default function Admin() {
           ))
         )}
 
-        <hr style={{ margin: '15px 0' }} />
+        <hr style={{ margin: '15px 0', border: 'none', borderTop: '1px solid #e2d5be' }} />
 
         {/* 4. LIVE SCOREBOARD */}
         <h3 style={{ color: '#5c1522' }}>📊 Live Battle Scoreboard</h3>
-        {battles.map((b, idx) => (
-          <div key={b.id} style={{ padding: '12px', background: '#fdfbf7', border: '1px solid #e2d5be', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-            <span>#{idx + 1}: <strong>{b.singer_a}</strong> vs <strong>{b.singer_b}</strong></span>
-            <strong>{b.votes_a || 0} - {b.votes_b || 0}</strong>
-          </div>
-        ))}
+        {battles.length === 0 ? (
+          <p style={{ fontSize: '0.85rem', color: '#777' }}>Abhi koi battle chalu nahi hai.</p>
+        ) : (
+          battles.map((b, idx) => (
+            <div key={b.id} style={{ padding: '12px', background: '#fdfbf7', border: '1px solid #e2d5be', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+              <span>#{idx + 1}: <strong>{b.singer_a}</strong> vs <strong>{b.singer_b}</strong></span>
+              <strong>{b.votes_a || 0} - {b.votes_b || 0}</strong>
+            </div>
+          ))
+        )}
 
       </div>
     </div>

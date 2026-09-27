@@ -57,12 +57,16 @@ export const runAutoPilotCheck = async () => {
       await supabase.from('battles').delete().neq('id', 0);
       await supabase.from('contestants').delete().neq('id', 0);
 
+      const prevHistory = Array.isArray(settings.bracket_history) ? settings.bracket_history : [];
+      const updatedHistory = [...prevHistory, currentBattles];
+
       const { data: updated } = await supabase
         .from('mehfil_settings')
         .update({
           phase: 'completed',
           round_name: `👑 Sartaaj: ${winner.name}`,
-          phase_end_time: null
+          phase_end_time: null,
+          bracket_history: updatedHistory
         })
         .eq('id', 1)
         .select()
@@ -102,12 +106,17 @@ export const runAutoPilotCheck = async () => {
     const nextRoundName = getRoundNameByCount(winners.length);
     const next24h = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
+    // Pichle round ke battles ko bracket_history mein save rakhna taaki B&W cross aur morph har round mein dikhe
+    const prevHistory = Array.isArray(settings.bracket_history) ? settings.bracket_history : [];
+    const updatedHistory = [...prevHistory, currentBattles];
+
     const { data: updated } = await supabase
       .from('mehfil_settings')
       .update({
         phase: 'next_round_upload',
         round_name: nextRoundName,
-        phase_end_time: next24h
+        phase_end_time: next24h,
+        bracket_history: updatedHistory
       })
       .eq('id', 1)
       .select()
