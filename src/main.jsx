@@ -38,18 +38,34 @@ const linkStyle = ({ isActive }) => ({
   whiteSpace: 'nowrap'
 });
 
+const footerStyle = {
+  width: '100%',
+  textAlign: 'center',
+  padding: '14px 10px',
+  backgroundColor: '#5c1522',
+  color: '#fdfbf7',
+  fontFamily: 'Playfair Display, serif',
+  fontSize: '0.95rem',
+  letterSpacing: '0.5px',
+  borderTop: '2px solid #d4af37',
+  boxShadow: '0 -4px 12px rgba(0,0,0,0.12)',
+  marginTop: 'auto'
+};
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh' }}>
+        {/* Top Menu Bar */}
         <nav style={navBarStyle}>
-          <img src={heroLogo} alt="Mic" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #ffd700', objectFit: 'cover' }} />
+          <img src={heroLogo} alt="Mic" style={{ width: '34px', height: '34px', borderRadius: '50%', border: '1.5px solid #ffd700', objectFit: 'cover' }} />
           <NavLink to="/" style={linkStyle}>🎤 Battles</NavLink>
           <NavLink to="/register" style={linkStyle}>📝 Register</NavLink>
           <NavLink to="/winners" style={linkStyle}>🏆 Sartaaj</NavLink>
           <NavLink to="/admin" style={linkStyle}>⚙️ Admin</NavLink>
         </nav>
 
+        {/* Main Page Content */}
         <div style={{ width: '100%', flex: 1 }}>
           <Routes>
             <Route path="/" element={<App />} />
@@ -58,6 +74,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/admin" element={<Admin />} />
           </Routes>
         </div>
+
+        {/* Global Royal Footer */}
+        <footer style={footerStyle}>
+          Made with Love by <strong style={{ color: '#ffd700' }}>Paneer</strong> ❤️
+        </footer>
       </div>
     </BrowserRouter>
   </React.StrictMode>,
