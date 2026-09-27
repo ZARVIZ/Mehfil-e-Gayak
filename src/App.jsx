@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from './supabaseClient'
+import { runAutoPilotCheck } from './autoPilot'
 import heroLogo from './assets/hero.png'
 import './App.css'
 
@@ -37,8 +38,8 @@ function App() {
   }, []);
 
   const initMehfil = async (vId) => {
-    // 1. Settings & Round Theme Lana
-    const { data: sData } = await supabase.from('mehfil_settings').select('*').eq('id', 1).single();
+    // 1. Auto-Pilot Check + Settings & Round Theme Lana
+    const sData = await runAutoPilotCheck();
     if (sData) {
       setSettings(sData);
       if (sData.phase_end_time) startTimer(new Date(sData.phase_end_time).getTime());

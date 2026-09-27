@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import { runAutoPilotCheck, getRoundNameByCount } from './autoPilot';
 import './App.css';
 
 export default function Admin() {
@@ -9,17 +10,10 @@ export default function Admin() {
 
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedRound, setSelectedRound] = useState('Round 1');
+  const [settings, setSettings] = useState(null);
   const [contestants, setContestants] = useState([]);
   const [battles, setBattles] = useState([]);
   const [voteRequests, setVoteRequests] = useState([]);
-
-  // Hall of Fame Inputs
-  const [seasonTitle, setSeasonTitle] = useState('Mehfil Season 1');
-  const [winnerName, setWinnerName] = useState('');
-  const [winnerInsta, setWinnerInsta] = useState('');
-  const [runnerName, setRunnerName] = useState('');
-  const [runnerInsta, setRunnerInsta] = useState('');
 
   useEffect(() => {
     if (sessionStorage.getItem('mehfil_admin_auth') === 'true') {
@@ -29,6 +23,9 @@ export default function Admin() {
   }, []);
 
   const fetchAllData = async () => {
+    const sData = await runAutoPilotCheck();
+    if (sData) setSettings(sData);
+
     const { data: cData } = await supabase.from('contestants').select('*').order('id', { ascending: true });
     if (cData) setContestants(cData);
 
@@ -50,47 +47,60 @@ export default function Admin() {
     }
   };
 
-  // Point 4: Start 24-Hour Registration Window
-  const start24hRegistration = async () => {
+  const startNewSeasonRegistration = async () => {
+    if (!window.confirm("Naya Season shuru karein? Purane contestants aur battles hat jayenge aur 24h ke liye Registration khul jayega!")) return;
+
+    await supabase.from('battles').delete().neq('id', 0);
+    await supabase.from('contestants').delete().neq('id', 0);
+    await supabase.from('vote_requests').delete().neq('id', 0);
+
     const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     await supabase.from('mehfil_settings').update({
       phase: 'registration',
-      round_name: 'Registration Open',
+      round_name: 'Round 1',
       phase_end_time: endTime
     }).eq('id', 1);
-    setStatus('✅ Registration agle 24 ghante ke liye khul gaya hai!');
+
+    setStatus('✅ Naya Season shuru! Agle 24 ghante ke liye Registration khul gaya hai.');
+    fetchAllData();
   };
 
-  // Start New Tournament Round (24h Timer) & Clear Old Details (Point 5, 6, 13)
-  const generateMatches = async () => {
-    if (!window.confirm(`${selectedRound} ke naye matches banayein? Purane battle cards hat jayenge!`)) return;
+  const startVerifiedRoundBattles = async () => {
+    if (contestants.length < 2) {
+      alert('Battle shuru karne ke liye kam se kam 2 valid fankaar hone chahiye!');
+      return;
+    }
+
+    const pendingSongs = contestants.filter(c => !c.song_updated);
+    if (pendingSongs.length > 0) {
+      const proceed = window.confirm(
+        `Abhi ${pendingSongs.length} promoted fankaar ne naya gaana upload nahi kiya hai. Kya aap fir bhi Battle shuru karna chahte hain?`
+      );
+      if (!proceed) return;
+    }
+
     setLoading(true);
-
     try {
-      if (contestants.length < 2) {
-        setStatus('Kam se kam 2 fankaar chahiye!');
-        setLoading(false);
-        return;
-      }
-
       const shuffled = [...contestants].sort(() => Math.random() - 0.5);
       const newBattles = [];
 
       for (let i = 0; i < shuffled.length; i += 2) {
         if (i + 1 < shuffled.length) {
           newBattles.push({
-            singer_a: shuffled[i].name, audio_a: shuffled[i].audio_url, dp_a: shuffled[i].dp_url, insta_a: shuffled[i].insta_handle,
-            singer_b: shuffled[i+1].name, audio_b: shuffled[i+1].audio_url, dp_b: shuffled[i+1].dp_url, insta_b: shuffled[i+1].insta_handle,
+            singer_a: shuffled[i].name, audio_a: shuffled[i].audio_url, dp_a: shuffled[i].dp_url, insta_a: shuffled[i].insta_handle, pin_a: shuffled[i].secret_pin,
+            singer_b: shuffled[i+1].name, audio_b: shuffled[i+1].audio_url, dp_b: shuffled[i+1].dp_url, insta_b: shuffled[i+1].insta_handle, pin_b: shuffled[i+1].secret_pin,
             votes_a: 0, votes_b: 0
           });
         } else {
           newBattles.push({
-            singer_a: shuffled[i].name, audio_a: shuffled[i].audio_url, dp_a: shuffled[i].dp_url, insta_a: shuffled[i].insta_handle,
-            singer_b: "Wildcard Entry", audio_b: "", dp_b: "", insta_b: "",
+            singer_a: shuffled[i].name, audio_a: shuffled[i].audio_url, dp_a: shuffled[i].dp_url, insta_a: shuffled[i].insta_handle, pin_a: shuffled[i].secret_pin,
+            singer_b: "Wildcard Entry", audio_b: "", dp_b: "", insta_b: "", pin_b: "",
             votes_a: 1, votes_b: 0
           });
         }
       }
+
+      const autoRoundName = settings?.phase === 'registration' ? 'Round 1' : getRoundNameByCount(contestants.length);
 
       await supabase.from('battles').delete().neq('id', 0);
       await supabase.from('vote_requests').delete().neq('id', 0);
@@ -99,11 +109,11 @@ export default function Admin() {
       const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await supabase.from('mehfil_settings').update({
         phase: 'voting',
-        round_name: selectedRound,
+        round_name: autoRoundName,
         phase_end_time: endTime
       }).eq('id', 1);
 
-      setStatus(`🔥 ${selectedRound} shuru! 24 ghante ka timer chalu ho gaya hai.`);
+      setStatus(`🔥 ${autoRoundName} Battles Shuru! 24 ghante baad iske winners apne aap agle round mein promote ho jayenge!`);
       fetchAllData();
     } catch (err) {
       setStatus(`Error: ${err.message}`);
@@ -112,54 +122,27 @@ export default function Admin() {
     }
   };
 
-  // Promote Current Round Winners to Next Round (Quarter -> Semi -> Final)
-  const promoteWinnersToNextRound = async () => {
-    if (battles.length < 2) {
-      alert("Agle round mein promote karne ke liye kam se kam 2 battles honi chahiye!");
-      return;
-    }
-    if (!window.confirm(`Winners ko ${selectedRound} mein promote karein (24h timer ke sath)?`)) return;
+  const forceEndCurrentVotingRound = async () => {
+    if (!window.confirm("Kya aap abhi turant voting khatam karke Winners ko agle round mein Auto-Promote (ya Finale ho toh Sartaaj declare) karna chahte hain?")) return;
+    const pastTime = new Date(Date.now() - 1000).toISOString();
+    await supabase.from('mehfil_settings').update({ phase_end_time: pastTime }).eq('id', 1);
+    await fetchAllData();
+    setStatus('⚡ Winners automatically promote ho gaye hain! Ab wo apne Secret PIN se naya gaana daal sakte hain.');
+  };
 
-    const winners = battles.map(b => {
-      if ((b.votes_a || 0) >= (b.votes_b || 0) || !b.audio_b) {
-        return { name: b.singer_a, audio_url: b.audio_a, dp_url: b.dp_a, insta_handle: b.insta_a };
-      } else {
-        return { name: b.singer_b, audio_url: b.audio_b, dp_url: b.dp_b, insta_handle: b.insta_b };
-      }
-    });
-
-    const nextBattles = [];
-    for (let i = 0; i < winners.length; i += 2) {
-      if (i + 1 < winners.length) {
-        nextBattles.push({
-          singer_a: winners[i].name, audio_a: winners[i].audio_url, dp_a: winners[i].dp_url, insta_a: winners[i].insta_handle,
-          singer_b: winners[i+1].name, audio_b: winners[i+1].audio_url, dp_b: winners[i+1].dp_url, insta_b: winners[i+1].insta_handle,
-          votes_a: 0, votes_b: 0
-        });
-      } else {
-        nextBattles.push({
-          singer_a: winners[i].name, audio_a: winners[i].audio_url, dp_a: winners[i].dp_url, insta_a: winners[i].insta_handle,
-          singer_b: "Wildcard Entry", audio_b: "", dp_b: "", insta_b: "",
-          votes_a: 1, votes_b: 0
-        });
-      }
-    }
-
-    await supabase.from('battles').delete().neq('id', 0);
-    await supabase.from('battles').insert(nextBattles);
-
-    const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    await supabase.from('mehfil_settings').update({
-      phase: 'voting',
-      round_name: selectedRound,
-      phase_end_time: endTime
-    }).eq('id', 1);
-
-    setStatus(`🏆 Winners ko ${selectedRound} mein promote kar diya gaya hai!`);
+  const handleDisqualify = async (id, name) => {
+    if (!window.confirm(`Kya aap "${name}" ko Disqualify / Remove karna chahte hain?`)) return;
+    await supabase.from('contestants').delete().eq('id', id);
     fetchAllData();
   };
 
-  // Point 15: Approve Vote Change Request
+  // Agar kisi singer ne galti se galat gaana daal diya aur wo dobara upload karna chahe
+  const handleUnlockReupload = async (id, name) => {
+    await supabase.from('contestants').update({ song_updated: false }).eq('id', id);
+    alert(`${name} ka upload lock khol diya gaya hai. Ab wo apna PIN daal kar dobara gaana upload kar sakta hai.`);
+    fetchAllData();
+  };
+
   const handleApproveVoteChange = async (req) => {
     const { data: b } = await supabase.from('battles').select('*').eq('id', req.battle_id).single();
     if (b) {
@@ -173,33 +156,7 @@ export default function Admin() {
       }
       await supabase.from('battles').update({ votes_a: vA, votes_b: vB }).eq('id', req.battle_id);
     }
-
     await supabase.from('vote_requests').update({ status: 'approved' }).eq('id', req.id);
-    fetchAllData();
-  };
-
-  // Point 13: Save Winner & Runner-Up to Hall of Fame & Clear Old Data
-  const publishHallOfFame = async (e) => {
-    e.preventDefault();
-    await supabase.from('hall_of_fame').insert([{
-      season_title: seasonTitle,
-      winner_name: winnerName,
-      winner_insta: winnerInsta,
-      runner_up_name: runnerName,
-      runner_up_insta: runnerInsta
-    }]);
-
-    if (window.confirm("Winner Sartaaj tab mein jud gaya! Kya ab purane contestants aur battles saaf kar dein naye season ke liye?")) {
-      await supabase.from('battles').delete().neq('id', 0);
-      await supabase.from('contestants').delete().neq('id', 0);
-      fetchAllData();
-    }
-    alert("Hall of Fame Updated!");
-  };
-
-  const handleRemoveContestant = async (id, name) => {
-    if (!window.confirm(`Delete ${name}?`)) return;
-    await supabase.from('contestants').delete().eq('id', id);
     fetchAllData();
   };
 
@@ -220,38 +177,86 @@ export default function Admin() {
   return (
     <div className="mehfil-container">
       <h1>Admin Control Room</h1>
-      <p className="subtitle">24h Timers, Rounds, Requests & Hall of Fame</p>
+      <p className="subtitle">PIN Security, Song Verification & Disqualification</p>
 
       <div className="battle-arena-vertical" style={{ textAlign: 'left' }}>
         
-        {/* 1. 24-HOUR REGISTRATION & ROUND CONTROLS */}
-        <h3 style={{ color: '#5c1522' }}>⏱️ 1. 24-Hour Phase & Round Controls</h3>
-        <button className="vote-btn" style={{ backgroundColor: '#27ae60' }} onClick={start24hRegistration}>
-          🟢 Start Registration (Open for 24 Hours)
-        </button>
+        {/* 1. SEASON & ROUND CONTROLS */}
+        <div style={{ background: '#fdfbf7', padding: '15px', borderRadius: '12px', border: '1px solid #e2d5be', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ fontSize: '0.9rem', color: '#5c1522' }}>
+            <strong>Current Phase:</strong> {settings?.phase?.toUpperCase()} | <strong>Round:</strong> {settings?.round_name}
+          </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-          <select value={selectedRound} onChange={(e) => setSelectedRound(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 'bold' }}>
-            <option value="Round 1">Round 1 (Classic Theme)</option>
-            <option value="Quarter-Final">Quarter-Final (Midnight Blue Theme)</option>
-            <option value="Semi-Final">Semi-Final (Fiery Crimson Theme)</option>
-            <option value="Grand Finale">Grand Finale (Black & Gold Theme)</option>
-          </select>
-          <button className="vote-btn" style={{ flex: 1 }} onClick={generateMatches} disabled={loading}>
-            🎲 Start Fresh {selectedRound} (24h)
+          <button className="vote-btn" style={{ backgroundColor: '#27ae60' }} onClick={startNewSeasonRegistration}>
+            🟢 1. Start New Season (Open 24h Registration)
           </button>
+
+          <button className="vote-btn" style={{ backgroundColor: '#2c3e50' }} onClick={startVerifiedRoundBattles} disabled={loading}>
+            🎲 2. Songs Verified -> Start 24h Battles Now ({contestants.length} Fankaar)
+          </button>
+
+          {settings?.phase === 'voting' && (
+            <button className="small-btn" style={{ fontSize: '0.8rem' }} onClick={forceEndCurrentVotingRound}>
+              ⏩ End 24h Voting Early & Auto-Promote Winners (For Testing)
+            </button>
+          )}
+
+          {status && <p style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.9rem' }}>{status}</p>}
         </div>
 
-        <button className="small-btn" style={{ width: '100%', marginTop: '6px' }} onClick={promoteWinnersToNextRound}>
-          ⚡ Promote Current Winners to {selectedRound} (24h)
-        </button>
+        <hr style={{ margin: '15px 0' }} />
 
-        {status && <p style={{ color: '#27ae60', fontWeight: 'bold', marginTop: '8px' }}>{status}</p>}
+        {/* 2. VERIFY SONGS & DISQUALIFY INVALID ENTRIES */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ color: '#5c1522' }}>
+            🎧 Verify Songs / Disqualify ({contestants.length})
+          </h3>
+          <button className="small-btn" onClick={fetchAllData}>Refresh 🔄</button>
+        </div>
 
-        <hr style={{ margin: '20px 0' }} />
+        <div style={{ maxHeight: '320px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {contestants.length === 0 ? (
+            <p style={{ color: '#888', fontStyle: 'italic' }}>Abhi koi fankaar list mein nahi hai.</p>
+          ) : (
+            contestants.map(c => (
+              <div key={c.id} style={{ padding: '12px', background: '#fdfbf7', border: '1px solid #e2d5be', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <strong>{c.name}</strong> <span style={{ fontSize: '0.8rem', color: '#888' }}>({c.contact})</span>
+                  <span style={{ marginLeft: '8px', background: '#efe8d8', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', color: '#5c1522' }}>
+                    🔑 PIN: {c.secret_pin || 'N/A'}
+                  </span>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: c.song_updated ? '#27ae60' : '#e67e22', marginTop: '4px' }}>
+                    {c.song_updated ? '🔒 New Song Uploaded & Locked' : '⏳ Waiting for New Round Song...'}
+                  </div>
+                </div>
 
-        {/* 2. VOTE CHANGE REQUESTS (Point 15) */}
-        <h3 style={{ color: '#5c1522' }}>🔄 2. Vote Change Requests ({voteRequests.length})</h3>
+                <audio controls src={c.audio_url} style={{ height: '32px', maxWidth: '190px' }}></audio>
+
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {c.song_updated && settings?.phase === 'next_round_upload' && (
+                    <button 
+                      onClick={() => handleUnlockReupload(c.id, c.name)} 
+                      style={{ background: '#f39c12', color: '#fff', border: 'none', padding: '7px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}
+                    >
+                      Unlock 🔓
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handleDisqualify(c.id, c.name)} 
+                    style={{ background: '#c0392b', color: '#fff', border: 'none', padding: '7px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}
+                  >
+                    Disqualify ❌
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <hr style={{ margin: '15px 0' }} />
+
+        {/* 3. VOTE CHANGE REQUESTS */}
+        <h3 style={{ color: '#5c1522' }}>🔄 Vote Change Requests ({voteRequests.length})</h3>
         {voteRequests.length === 0 ? (
           <p style={{ fontSize: '0.85rem', color: '#777' }}>Koi pending request nahi hai.</p>
         ) : (
@@ -268,56 +273,16 @@ export default function Admin() {
           ))
         )}
 
-        <hr style={{ margin: '20px 0' }} />
-
-        {/* 3. REGISTERED CONTESTANTS */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ color: '#5c1522' }}>🎤 3. Registered Fankaar ({contestants.length})</h3>
-          <button className="small-btn" onClick={fetchAllData}>Refresh 🔄</button>
-        </div>
-        <div style={{ maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {contestants.map(c => (
-            <div key={c.id} style={{ padding: '10px', background: '#fdfbf7', border: '1px solid #e2d5be', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <div>
-                <strong>{c.name}</strong> <span style={{ fontSize: '0.8rem', color: '#888' }}>({c.contact})</span>
-              </div>
-              <audio controls src={c.audio_url} style={{ height: '30px', maxWidth: '180px' }}></audio>
-              <button onClick={() => handleRemoveContestant(c.id, c.name)} style={{ background: '#c0392b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer' }}>
-                🗑️
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <hr style={{ margin: '20px 0' }} />
+        <hr style={{ margin: '15px 0' }} />
 
         {/* 4. LIVE SCOREBOARD */}
-        <h3 style={{ color: '#5c1522' }}>📊 4. Live Scoreboard</h3>
+        <h3 style={{ color: '#5c1522' }}>📊 Live Battle Scoreboard</h3>
         {battles.map((b, idx) => (
           <div key={b.id} style={{ padding: '12px', background: '#fdfbf7', border: '1px solid #e2d5be', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
             <span>#{idx + 1}: <strong>{b.singer_a}</strong> vs <strong>{b.singer_b}</strong></span>
             <strong>{b.votes_a || 0} - {b.votes_b || 0}</strong>
           </div>
         ))}
-
-        <hr style={{ margin: '20px 0' }} />
-
-        {/* 5. PUBLISH WINNER TO HALL OF FAME (Point 13) */}
-        <h3 style={{ color: '#5c1522' }}>🏆 5. Crown Winner & Archive Season</h3>
-        <form onSubmit={publishHallOfFame} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input type="text" placeholder="Season Name (e.g. Season 1)" value={seasonTitle} onChange={(e) => setSeasonTitle(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} required />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input type="text" placeholder="Winner Name *" value={winnerName} onChange={(e) => setWinnerName(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} required />
-            <input type="text" placeholder="Winner @insta *" value={winnerInsta} onChange={(e) => setWinnerInsta(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} required />
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input type="text" placeholder="Runner-Up Name" value={runnerName} onChange={(e) => setRunnerName(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
-            <input type="text" placeholder="Runner-Up @insta" value={runnerInsta} onChange={(e) => setRunnerInsta(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
-          </div>
-          <button type="submit" className="vote-btn" style={{ backgroundColor: '#d4af37', color: '#000' }}>
-            👑 Publish to Sartaaj Tab & End Season
-          </button>
-        </form>
 
       </div>
     </div>
