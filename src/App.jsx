@@ -217,6 +217,7 @@ function App() {
             battles={battles} 
             contestants={contestants} 
             bracketHistory={settings.bracket_history || []}
+            isVotingEnded={timeLeft === 'Samay समाप्त (Voting Ended)' || settings.phase === 'completed'}
             onSelectBattle={(idx) => {
               if (idx >= 0 && idx < battles.length) setCurrentIndex(idx);
             }}

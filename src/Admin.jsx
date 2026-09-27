@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import { runAutoPilotCheck, getRoundNameByCount } from './autoPilot';
 import './App.css';
@@ -15,6 +15,16 @@ export default function Admin() {
   const [battles, setBattles] = useState([]);
   const [voteRequests, setVoteRequests] = useState([]);
 
+  // Ek waqt par ek hi audio bajane ke liye Ref
+  const currentlyPlayingAudio = useRef(null);
+
+  const handleAudioPlay = (e) => {
+    if (currentlyPlayingAudio.current && currentlyPlayingAudio.current !== e.target) {
+      currentlyPlayingAudio.current.pause();
+    }
+    currentlyPlayingAudio.current = e.target;
+  };
+
   useEffect(() => {
     if (sessionStorage.getItem('mehfil_admin_auth') === 'true') {
       setIsAuthenticated(true);
@@ -23,7 +33,6 @@ export default function Admin() {
   }, []);
 
   const fetchAllData = async () => {
-    // Auto-Pilot Check: Agar 24h voting khatam ho gayi hai toh winners promote karega ya Finale winner declare karega
     const sData = await runAutoPilotCheck();
     if (sData) setSettings(sData);
 
@@ -63,7 +72,6 @@ export default function Admin() {
     sessionStorage.removeItem('mehfil_admin_auth');
   };
 
-  // 1. Start Fresh Season (Open 24h Registration & Clear Old Bracket History)
   const startNewSeasonRegistration = async () => {
     if (!window.confirm("Naya Season shuru karein? Purane contestants, battles aur bracket history saaf ho jayenge aur 24h ke liye Registration khul jayega!")) return;
 
@@ -83,7 +91,6 @@ export default function Admin() {
     fetchAllData();
   };
 
-  // 2. Start 24h Round Battles (After Verifying Songs & Disqualifying Invalid Entries)
   const startVerifiedRoundBattles = async () => {
     if (contestants.length < 2) {
       alert('Battle shuru karne ke liye kam se kam 2 valid fankaar hone chahiye!');
@@ -137,7 +144,7 @@ export default function Admin() {
         }
       }
 
-      const autoRoundName = settings?.phase === 'registration' ? 'Round 1' : getRoundNameByCount(contestants.length);
+      const autoRoundName = settings?.phase === 'registration' ? getRoundNameByCount(contestants.length) : getRoundNameByCount(contestants.length);
 
       await supabase.from('battles').delete().neq('id', 0);
       await supabase.from('vote_requests').delete().neq('id', 0);
@@ -159,7 +166,6 @@ export default function Admin() {
     }
   };
 
-  // Testing Shortcut: Force End 24h Voting Early to Test Auto-Promote & Finale Crown
   const forceEndCurrentVotingRound = async () => {
     if (!window.confirm("Kya aap abhi turant voting khatam karke Winners ko agle round mein Auto-Promote (ya Finale ho toh Sartaaj declare) karna chahte hain?")) return;
     const pastTime = new Date(Date.now() - 1000).toISOString();
@@ -168,21 +174,18 @@ export default function Admin() {
     setStatus('⚡ Round समाप्त! Winners automatically promote ho gaye hain (ya Finale tha toh Sartaaj declare ho gaya hai)!');
   };
 
-  // Disqualify / Remove Fake or Invalid Contestant
   const handleDisqualify = async (id, name) => {
     if (!window.confirm(`Kya aap "${name}" ko Disqualify / Remove karna chahte hain?`)) return;
     await supabase.from('contestants').delete().eq('id', id);
     fetchAllData();
   };
 
-  // Unlock Song Re-upload for a Promoted Winner
   const handleUnlockReupload = async (id, name) => {
     await supabase.from('contestants').update({ song_updated: false }).eq('id', id);
     alert(`${name} ka upload lock khol diya gaya hai. Ab wo apna Secret PIN daal kar dobara naya gaana upload kar sakta hai.`);
     fetchAllData();
   };
 
-  // Approve Voter's Vote Change Request
   const handleApproveVoteChange = async (req) => {
     const { data: b } = await supabase.from('battles').select('*').eq('id', req.battle_id).single();
     if (b) {
@@ -285,7 +288,13 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <audio controls src={c.audio_url} style={{ height: '32px', maxWidth: '190px' }}></audio>
+                {/* onPlay={handleAudioPlay} ab dusra gaana chalate hi pichle ko pause kar dega */}
+                <audio 
+                  controls 
+                  src={c.audio_url} 
+                  onPlay={handleAudioPlay}
+                  style={{ height: '32px', maxWidth: '190px' }}
+                ></audio>
 
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {c.song_updated && settings?.phase === 'next_round_upload' && (

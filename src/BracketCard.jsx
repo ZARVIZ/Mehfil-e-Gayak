@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import './App.css';
 
-// Recursive Subtree: Round-by-Round Delay, B&W Elimination Cross, aur Morph Transition ke sath
 function WingTree({ node, side, onSelectBattle }) {
   if (!node) return null;
 
   const isLeaf = !node.children || node.children.length === 0;
-  // Har agle round ka animation pichle round ke 0.85s baad chalega
-  const roundDelay = `${(node.roundLevel || 0) * 0.85}s`;
-  const elimDelay = `${(node.roundLevel || 0) * 0.85 + 0.45}s`;
+  const roundDelay = `${(node.roundLevel || 0) * 0.65}s`;
+  const elimDelay = `${(node.roundLevel || 0) * 0.65 + 0.35}s`;
 
-  // Morph kis disha (top child ya bottom child) se aaya hai
   const morphClass = node.morphedFrom
     ? side === 'left'
       ? node.morphedFrom === 'top' ? 'morph-from-left-top' : 'morph-from-left-bottom'
@@ -45,7 +42,6 @@ function WingTree({ node, side, onSelectBattle }) {
           onClick={() => node.battleIndex !== undefined && onSelectBattle && onSelectBattle(node.battleIndex)}
           title={node.name || 'TBD'}
         >
-          {/* Contestant DP + Eliminated Black & White + Cross Stamp */}
           {!node.isPlaceholder && (
             <div className="bracket-dp-container">
               <img 
@@ -78,40 +74,48 @@ function WingTree({ node, side, onSelectBattle }) {
   );
 }
 
-export default function BracketCard({ battles = [], contestants = [], bracketHistory = [], onSelectBattle }) {
-  // replayKey badalte hi poora morph aur elimination animation dobara shuru se chalega!
+export default function BracketCard({ battles = [], contestants = [], bracketHistory = [], isVotingEnded = false, onSelectBattle }) {
   const [replayKey, setReplayKey] = useState(0);
 
   const historyRounds = Array.isArray(bracketHistory) ? bracketHistory : [];
   const round1Battles = historyRounds.length > 0 ? historyRounds[0] : battles;
 
+  // 1. Exact Player Count nikalna (1v1 ke liye 2 slots, 4 ke liye 4, 8 ke liye 8)
   let initialPlayerCount = 0;
   if (round1Battles && round1Battles.length > 0) {
-    initialPlayerCount = round1Battles.length * 2;
+    initialPlayerCount = round1Battles.reduce((acc, b) => acc + (b.audio_b && b.singer_b !== 'Wildcard Entry' ? 2 : 1), 0);
+    if (initialPlayerCount < round1Battles.length * 2) {
+      initialPlayerCount = round1Battles.length * 2;
+    }
   } else if (contestants && contestants.length > 0) {
     initialPlayerCount = contestants.length;
   } else {
-    initialPlayerCount = 16;
+    initialPlayerCount = 4;
   }
 
-  const totalSlots = Math.max(4, Math.pow(2, Math.ceil(Math.log2(Math.max(4, initialPlayerCount)))));
+  // Ab minimum 2 slots ho sakte hain (1v1 Finale ke liye extra boxes nahi banenge!)
+  const totalSlots = Math.max(2, Math.pow(2, Math.ceil(Math.log2(Math.max(2, initialPlayerCount)))));
   const totalRounds = Math.log2(totalSlots);
 
-  // 1. Outermost Round 0 (Leaf Nodes)
+  // 2. Outermost Round 0 (Leaf Nodes)
   const leafNodes = [];
+  const isRound0Finished = historyRounds.length > 0 || isVotingEnded;
+
   for (let i = 0; i < totalSlots; i++) {
     const battleIdx = Math.floor(i / 2);
     const isPlayerA = i % 2 === 0;
 
     if (round1Battles && round1Battles[battleIdx]) {
       const b = round1Battles[battleIdx];
-      const isPastRound = historyRounds.length > 0;
-      const liveB = (!isPastRound && battles[battleIdx]) ? battles[battleIdx] : b;
+      const liveB = (historyRounds.length === 0 && battles[battleIdx]) ? battles[battleIdx] : b;
 
       const vA = liveB.votes_a || 0;
       const vB = liveB.votes_b || 0;
-      const hasDecision = isPastRound || (vA !== vB) || !liveB.audio_b;
-      const aWins = !liveB.audio_b ? true : vA >= vB;
+      const isWildcard = !liveB.audio_b || liveB.singer_b === 'Wildcard Entry';
+
+      // SIRF tabhi eliminate ya promote dikhao jab Round sach mein khatam ho chuka ho!
+      const hasDecision = isRound0Finished || isWildcard;
+      const aWins = isWildcard ? true : vA >= vB;
 
       if (isPlayerA) {
         leafNodes.push({
@@ -121,10 +125,9 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
           isWinner: hasDecision && aWins,
           isEliminated: hasDecision && !aWins,
           roundLevel: 0,
-          battleIndex: !isPastRound ? battleIdx : undefined
+          battleIndex: historyRounds.length === 0 ? battleIdx : undefined
         });
       } else {
-        const isWildcard = !liveB.audio_b || liveB.singer_b === 'Wildcard Entry';
         leafNodes.push({
           name: liveB.singer_b || 'Wildcard',
           dp: liveB.dp_b,
@@ -132,7 +135,7 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
           isWinner: hasDecision && !aWins && !isWildcard,
           isEliminated: isWildcard || (hasDecision && aWins),
           roundLevel: 0,
-          battleIndex: !isPastRound ? battleIdx : undefined
+          battleIndex: historyRounds.length === 0 ? battleIdx : undefined
         });
       }
     } else if (contestants && contestants[i]) {
@@ -144,7 +147,7 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
       });
     } else {
       leafNodes.push({
-        name: `Slot #${i + 1}`,
+        name: `TBD`,
         dp: null,
         votes: null,
         isPlaceholder: true,
@@ -153,12 +156,12 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
     }
   }
 
-  // 2. Build Inner Rounds with Morph Source ('top' or 'bottom') & Elimination States
+  // 3. Inner Rounds (Sirf tabhi bharenge jab pichla round khatam ho chuka ho!)
   let currentLevelNodes = leafNodes.map(n => ({ ...n, children: [] }));
 
   for (let r = 1; r < totalRounds; r++) {
     const nextLevelNodes = [];
-    const isCompletedRound = historyRounds.length > r;
+    const isThisRoundFinished = historyRounds.length > r || (historyRounds.length === r && isVotingEnded);
     const roundMatches = historyRounds[r] || (historyRounds.length === r ? battles : []);
 
     for (let i = 0; i < currentLevelNodes.length; i += 2) {
@@ -168,8 +171,6 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
       const matchIdx = Math.floor(i / 4);
       const isSideA = (i / 2) % 2 === 0;
       const matchData = roundMatches && roundMatches[matchIdx] ? roundMatches[matchIdx] : null;
-
-      // Pata lagana ki winner upar wale box (top) se morph hokar aaya hai ya niche wale (bottom) se
       const cameFrom = topChild?.isWinner ? 'top' : bottomChild?.isWinner ? 'bottom' : 'top';
 
       let parentNode = {
@@ -184,8 +185,9 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
       if (matchData) {
         const vA = matchData.votes_a || 0;
         const vB = matchData.votes_b || 0;
-        const hasDecision = isCompletedRound || (vA !== vB) || !matchData.audio_b;
-        const aWins = !matchData.audio_b ? true : vA >= vB;
+        const isWildcard = !matchData.audio_b || matchData.singer_b === 'Wildcard Entry';
+        const hasDecision = isThisRoundFinished || isWildcard;
+        const aWins = isWildcard ? true : vA >= vB;
 
         const thisWon = isSideA ? (hasDecision && aWins) : (hasDecision && !aWins);
         const thisLost = isSideA ? (hasDecision && !aWins) : (hasDecision && aWins);
@@ -193,17 +195,17 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
         parentNode = {
           name: isSideA ? matchData.singer_a : (matchData.singer_b || 'Wildcard'),
           dp: isSideA ? matchData.dp_a : matchData.dp_b,
-          votes: isSideA ? vA : (matchData.audio_b ? vB : 'BYE'),
+          votes: isSideA ? vA : (isWildcard ? 'BYE' : vB),
           isWinner: thisWon,
           isEliminated: thisLost,
           isPlaceholder: false,
           roundLevel: r,
           morphedFrom: cameFrom,
-          battleIndex: !isCompletedRound ? matchIdx : undefined,
+          battleIndex: historyRounds.length === r ? matchIdx : undefined,
           children: [topChild, bottomChild]
         };
       } else if (topChild?.isWinner || bottomChild?.isWinner) {
-        // Winner morphs into the next round slot!
+        // Pichla round khatam hone par hi winner agle box mein morph hokar aayega
         const advancingChild = topChild?.isWinner ? topChild : bottomChild;
         parentNode = {
           name: advancingChild.name,
@@ -230,19 +232,18 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
     <div className="bracket-card-Wrapper">
       <div className="bracket-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', padding: '0 8px' }}>
         <div style={{ textAlign: 'left' }}>
-          <h3>🏆 Live Tournament Bracket ({totalSlots} Fankaar)</h3>
-          <small>❌ Eliminated = Black & White | 🚀 Winner = Morphs to Next Round</small>
+          <h3>🏆 Mehfil Matchmaking Bracket</h3>
+          <small>Har round ka samay pura hone par vijeta aage badhenge</small>
         </div>
         <button 
           className="small-btn" 
           onClick={() => setReplayKey(prev => prev + 1)}
           style={{ padding: '5px 12px', fontSize: '0.78rem', backgroundColor: '#5c1522', color: '#ffd700', border: 'none' }}
         >
-          🎬 Replay Animation
+          🎬 Replay
         </button>
       </div>
 
-      {/* key={replayKey} har baar kholne ya Replay dabane par animation fresh chalayega */}
       <div className="bracket-scroll-area" key={replayKey}>
         <div className="symmetrical-bracket-board">
           
@@ -254,7 +255,7 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
           {/* CENTER FINALE TROPHY */}
           <div className="bracket-center-vs">
             <div className="trophy-circle">🏆</div>
-            <span className="finale-tag">FINALE</span>
+            <span className="finale-tag">{totalSlots === 2 ? '1 VS 1' : 'FINALE'}</span>
           </div>
 
           {/* RIGHT WING */}
