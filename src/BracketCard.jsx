@@ -245,7 +245,7 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
       </div>
 
       <div className="bracket-scroll-area" key={replayKey}>
-        <div className="symmetrical-bracket-board">
+        <div className="symmetrical-bracket-board" style={{ gap: totalSlots === 2 ? '15px' : '10px' }}>
           
           {/* LEFT WING */}
           <div className="bracket-wing left-wing">
@@ -255,7 +255,9 @@ export default function BracketCard({ battles = [], contestants = [], bracketHis
           {/* CENTER FINALE TROPHY */}
           <div className="bracket-center-vs">
             <div className="trophy-circle">🏆</div>
-            <span className="finale-tag">{totalSlots === 2 ? '1 VS 1' : 'FINALE'}</span>
+            <span className="finale-tag" style={{ fontSize: totalSlots === 2 ? '0.75rem' : '0.65rem' }}>
+              {totalSlots === 2 ? '1 VS 1' : 'FINALE'}
+            </span>
           </div>
 
           {/* RIGHT WING */}

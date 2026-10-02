@@ -103,7 +103,7 @@ function App() {
   };
 
   const handleDmRequest = (singerName, instaHandle) => {
-    const cleanHandle = (instaHandle || '').replace('@', '').trim();
+    const cleanHandle = (instaHandle || '').replace(/^@+/, '').trim();
     if (!cleanHandle) {
       alert("Is fankaar ka Instagram handle uplabdh nahi hai.");
       return;
@@ -189,7 +189,6 @@ function App() {
     );
   }
 
-  // Check if tournament is actually running (Not closed and Not completed)
   const isTournamentActive = settings.phase !== 'closed' && settings.phase !== 'completed';
 
   return (
@@ -210,7 +209,6 @@ function App() {
           <div className="timer-pill">⏳ Samay Bacha Hai: {timeLeft}</div>
         )}
 
-        {/* SIRF ACTIVE TOURNAMENT MEIN HI BRACKET DIKHEGA (Khatam hone par gayab ho jayega!) */}
         {isTournamentActive && (
           <>
             <div style={{ marginBottom: '15px' }}>
@@ -261,7 +259,6 @@ function App() {
           </div>
         ) : (
           <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-            {/* Match Switcher Bar */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
               {battles.map((b, idx) => (
                 <button
@@ -300,8 +297,8 @@ function App() {
                         <h2 className="fankaar-name">{currentBattle.singer_a}</h2>
                         {currentBattle.insta_a && (
                           <div className="social-row">
-                            <a href={`https://instagram.com/${currentBattle.insta_a.replace('@', '')}`} target="_blank" rel="noreferrer" className="insta-follow-btn">
-                              📸 Follow @{currentBattle.insta_a.replace('@', '')}
+                            <a href={`https://instagram.com/${currentBattle.insta_a.replace(/^@+/, '')}`} target="_blank" rel="noreferrer" className="insta-follow-btn">
+                              📸 Follow @{currentBattle.insta_a.replace(/^@+/, '')}
                             </a>
                             <button onClick={() => handleDmRequest(currentBattle.singer_a, currentBattle.insta_a)} className="dm-request-btn">
                               📩 Request Audio in DM
@@ -324,8 +321,8 @@ function App() {
                         <h2 className="fankaar-name">{currentBattle.singer_b}</h2>
                         {currentBattle.insta_b && currentBattle.audio_b && (
                           <div className="social-row">
-                            <a href={`https://instagram.com/${currentBattle.insta_b.replace('@', '')}`} target="_blank" rel="noreferrer" className="insta-follow-btn">
-                              📸 Follow @{currentBattle.insta_b.replace('@', '')}
+                            <a href={`https://instagram.com/${currentBattle.insta_b.replace(/^@+/, '')}`} target="_blank" rel="noreferrer" className="insta-follow-btn">
+                              📸 Follow @{currentBattle.insta_b.replace(/^@+/, '')}
                             </a>
                             <button onClick={() => handleDmRequest(currentBattle.singer_b, currentBattle.insta_b)} className="dm-request-btn">
                               📩 Request Audio in DM

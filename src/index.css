@@ -1,3 +1,6 @@
+/* =========================================
+   GLOBAL RESET & BASE STYLES
+   ========================================= */
 html, body, #root {
   width: 100% !important;
   min-height: 100vh !important;
@@ -6,4 +9,10 @@ html, body, #root {
   display: block !important;
   overflow-x: hidden !important;
   background-color: #efe8d8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
 }

@@ -71,11 +71,14 @@ export default function Register() {
       return;
     }
 
-    const cleanInsta = instaHandle.replace('@', '').trim();
+    // Smart cleanup for instagram handle (removes extra @ symbols)
+    const cleanInsta = instaHandle.replace(/^@+/, '').trim();
+    
     setLoading(true);
     setMessage('Aapki peshkash darj ho rahi hai...');
 
     try {
+      // Check for duplicate registration
       const { data: existing } = await supabase.from('contestants').select('id').ilike('insta_handle', cleanInsta);
       if (existing && existing.length > 0) {
         setMessage('Is Instagram ID se pehle hi registration ho chuka hai!');
@@ -83,12 +86,14 @@ export default function Register() {
         return;
       }
 
+      // Audio Upload
       const audioExt = audioFile.name.split('.').pop();
       const audioFileName = `audio_${Date.now()}.${audioExt}`;
       const { error: audioErr } = await supabase.storage.from('audios').upload(audioFileName, audioFile);
       if (audioErr) throw audioErr;
       const { data: audioUrlData } = supabase.storage.from('audios').getPublicUrl(audioFileName);
 
+      // DP Upload or Fallback
       let finalDpUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=5c1522&color=fff&size=200`;
       if (dpOption === 'upload' && dpFile) {
         const dpExt = dpFile.name.split('.').pop();
@@ -99,6 +104,7 @@ export default function Register() {
         finalDpUrl = dpUrlData.publicUrl;
       }
 
+      // Insert into DB
       const { error: dbError } = await supabase.from('contestants').insert([{
         name: name.trim(),
         contact: `@${cleanInsta}`,
@@ -129,17 +135,16 @@ export default function Register() {
       return;
     }
 
-    // Selected winner dhoondhna
     const targetWinner = promotedList.find(w => String(w.id) === String(selectedWinnerId));
     if (!targetWinner) return;
 
-    // Check 1: Agar pehle hi naya gaana upload ho chuka hai toh lock rakho
+    // Check 1: Is Song Already Uploaded?
     if (targetWinner.song_updated) {
       setMessage('🔒 Aapka naya gaana pehle hi upload hokar Lock ho chuka hai! Badalne ke liye Admin se sampark karein.');
       return;
     }
 
-    // Check 2: Secret PIN Match Karna
+    // Check 2: Secret PIN Verification
     if (String(targetWinner.secret_pin).trim() !== String(verifyPinInput).trim()) {
       setMessage('❌ Galat Secret PIN! Aap kisi aur fankaar ki ID se gaana upload nahi kar sakte!');
       return;

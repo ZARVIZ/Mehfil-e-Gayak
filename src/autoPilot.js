@@ -31,7 +31,9 @@ export const runAutoPilotCheck = async () => {
 
     if (!currentBattles || currentBattles.length === 0) return settings;
 
-    // CASE A: GRAND FINALE KHATAM -> AUTO CROWN WINNER & CLEAR EVERYTHING!
+    // ==========================================
+    // CASE A: GRAND FINALE KHATAM -> SARTAAJ DECLARE
+    // ==========================================
     if (currentBattles.length === 1) {
       const finalMatch = currentBattles[0];
       const aWon = (finalMatch.votes_a || 0) >= (finalMatch.votes_b || 0) || !finalMatch.audio_b;
@@ -45,7 +47,7 @@ export const runAutoPilotCheck = async () => {
         : { name: finalMatch.singer_a, insta: finalMatch.insta_a, dp: finalMatch.dp_a };
 
       await supabase.from('hall_of_fame').insert([{
-        season_title: `Mehfil (${new Date().toLocaleDateString()})`,
+        season_title: `Mehfil (${new Date().toLocaleDateString('en-GB')})`,
         winner_name: winner.name,
         winner_insta: winner.insta || '',
         winner_dp: winner.dp || '',
@@ -75,12 +77,14 @@ export const runAutoPilotCheck = async () => {
       return updated;
     }
 
-    // CASE B: WINNERS KO UNKE SECRET PIN KE SATH AGLE ROUND MEIN PROMOTE KARO
+    // ==========================================
+    // CASE B: ROUND KHATAM -> WINNERS KO PROMOTE KARO
+    // ==========================================
     const winners = currentBattles.map(b => {
       if ((b.votes_a || 0) >= (b.votes_b || 0) || !b.audio_b) {
         return {
           name: b.singer_a,
-          contact: b.insta_a ? `@${b.insta_a.replace('@', '')}` : 'Private',
+          contact: b.insta_a ? `@${b.insta_a.replace(/^@/, '')}` : 'Private',
           insta_handle: b.insta_a || '',
           audio_url: b.audio_a,
           dp_url: b.dp_a,
@@ -90,7 +94,7 @@ export const runAutoPilotCheck = async () => {
       } else {
         return {
           name: b.singer_b,
-          contact: b.insta_b ? `@${b.insta_b.replace('@', '')}` : 'Private',
+          contact: b.insta_b ? `@${b.insta_b.replace(/^@/, '')}` : 'Private',
           insta_handle: b.insta_b || '',
           audio_url: b.audio_b,
           dp_url: b.dp_b,

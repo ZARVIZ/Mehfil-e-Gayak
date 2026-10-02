@@ -144,7 +144,8 @@ export default function Admin() {
         }
       }
 
-      const autoRoundName = settings?.phase === 'registration' ? getRoundNameByCount(contestants.length) : getRoundNameByCount(contestants.length);
+      // Cleaned up redundant logic
+      const autoRoundName = getRoundNameByCount(contestants.length);
 
       await supabase.from('battles').delete().neq('id', 0);
       await supabase.from('vote_requests').delete().neq('id', 0);
@@ -288,9 +289,9 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* onPlay={handleAudioPlay} ab dusra gaana chalate hi pichle ko pause kar dega */}
                 <audio 
                   controls 
+                  controlsList="nodownload"
                   src={c.audio_url} 
                   onPlay={handleAudioPlay}
                   style={{ height: '32px', maxWidth: '190px' }}
