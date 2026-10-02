@@ -6,7 +6,7 @@ import './App.css';
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
-  const SECRET_PASS = "mehfil2026";
+  const SECRET_PASS = import.meta.env.VITE_ADMIN_PASSWORD;
 
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);

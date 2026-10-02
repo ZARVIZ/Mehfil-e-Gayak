@@ -346,28 +346,32 @@ function App() {
                   </div>
 
                   {!hasVotedThis && currentBattle.audio_b && !isVotingExpired && (
-                    <div className="bottom-actions">
-                      <button className="small-btn" onClick={() => handleVote('NOTA', 'NOTA')}>NOTA</button>
-                      <button className="small-btn" onClick={() => handleVote('BOTH', 'Dono Fankaaron')}>Vote Both</button>
-                    </div>
-                  )}
-
-                  {hasVotedThis && (
-                    <div style={{ marginTop: '16px' }}>
-                      <p style={{ fontSize: '0.85rem', marginBottom: '8px', opacity: 0.9 }}>
-                        🔒 Aap is muqable mein vote de chuke hain, par gaane jitni baar chahein sun sakte hain!
-                      </p>
-                      {pendingReqs.includes(currentBattle.id) ? (
-                        <span style={{ fontSize: '0.85rem', color: '#f39c12', fontWeight: 'bold' }}>
-                          ⏳ Vote Change Request Admin ke paas Pending hai...
-                        </span>
-                      ) : (
-                        <button className="small-btn" onClick={() => setShowChangeModal(true)}>
-                          🔄 Request Admin to Change Vote
-                        </button>
-                      )}
-                    </div>
-                  )}
+  <div className="bottom-actions">
+    <button className="small-btn" onClick={() => handleVote('NOTA', 'NOTA')}>NOTA</button>
+    <button className="small-btn" onClick={() => handleVote('BOTH', 'Dono Fankaaron')}>Vote Both</button>
+    
+    {/* Naya Share Button */}
+    <button 
+      className="small-btn" 
+      style={{ backgroundColor: '#e1306c', color: 'white', border: 'none' }}
+      onClick={() => {
+        const shareData = {
+          title: 'Vote for Me!',
+          text: `Maine Mehfil-e-Gayak me hissa liya hai! 🎤🔥 Mere gaane ko suno aur mujhe Sartaaj banne mein madad karo!\n\nVote for: ${currentBattle.singer_a} vs ${currentBattle.singer_b}`,
+          url: window.location.origin
+        };
+        if (navigator.share) {
+          navigator.share(shareData);
+        } else {
+          navigator.clipboard.writeText(`${shareData.text}\nLink: ${shareData.url}`);
+          alert("Text aur Link copy ho gaya hai! Ab ise Instagram Story ya WhatsApp par paste kar dein.");
+        }
+      }}
+    >
+      📢 Share to get Votes
+    </button>
+  </div>
+)}
                 </>
               );
             })()}
