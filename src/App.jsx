@@ -189,7 +189,9 @@ function App() {
     );
   }
 
-  const isTournamentActive = settings.phase !== 'closed' && settings.phase !== 'completed';
+  // 🔥 Smart Bulletproof Checks
+  const isTournamentFinished = settings.phase === 'completed' || String(settings.round_name).includes('Sartaaj');
+  const isTournamentActive = settings.phase !== 'closed' && !isTournamentFinished;
 
   return (
     <div className={getThemeClass()}>
@@ -198,7 +200,7 @@ function App() {
         <img src={heroLogo} alt="Mehfil Logo" className="brand-logo" style={{ width: '85px', height: '85px' }} />
         <h1>Mehfil-e-Gayak</h1>
         <p className="subtitle">
-          {settings.phase === 'completed' 
+          {isTournamentFinished 
             ? `🎉 ${settings.round_name} — Season Sampann Hua!` 
             : settings.phase === 'closed'
               ? 'Agli Mehfil Jald Sajegi!'
@@ -237,7 +239,7 @@ function App() {
 
         {battles.length === 0 ? (
           <div className="battle-arena-vertical" style={{ maxWidth: '560px', margin: '0 auto' }}>
-            {settings.phase === 'completed' ? (
+            {isTournamentFinished ? (
               <div style={{ padding: '15px 10px' }}>
                 <h3 style={{ color: '#5c1522', marginBottom: '8px' }}>🏆 Season Ka Natija Aa Chuka Hai!</h3>
                 <p style={{ color: '#666', fontSize: '0.95rem', marginBottom: '16px' }}>
