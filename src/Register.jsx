@@ -71,14 +71,12 @@ export default function Register() {
       return;
     }
 
-    // Smart cleanup for instagram handle (removes extra @ symbols)
     const cleanInsta = instaHandle.replace(/^@+/, '').trim();
     
     setLoading(true);
     setMessage('Aapki peshkash darj ho rahi hai...');
 
     try {
-      // Check for duplicate registration
       const { data: existing } = await supabase.from('contestants').select('id').ilike('insta_handle', cleanInsta);
       if (existing && existing.length > 0) {
         setMessage('Is Instagram ID se pehle hi registration ho chuka hai!');
@@ -86,14 +84,12 @@ export default function Register() {
         return;
       }
 
-      // Audio Upload
       const audioExt = audioFile.name.split('.').pop();
       const audioFileName = `audio_${Date.now()}.${audioExt}`;
       const { error: audioErr } = await supabase.storage.from('audios').upload(audioFileName, audioFile);
       if (audioErr) throw audioErr;
       const { data: audioUrlData } = supabase.storage.from('audios').getPublicUrl(audioFileName);
 
-      // DP Upload or Fallback
       let finalDpUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=5c1522&color=fff&size=200`;
       if (dpOption === 'upload' && dpFile) {
         const dpExt = dpFile.name.split('.').pop();
@@ -104,7 +100,6 @@ export default function Register() {
         finalDpUrl = dpUrlData.publicUrl;
       }
 
-      // Insert into DB
       const { error: dbError } = await supabase.from('contestants').insert([{
         name: name.trim(),
         contact: `@${cleanInsta}`,
@@ -138,13 +133,11 @@ export default function Register() {
     const targetWinner = promotedList.find(w => String(w.id) === String(selectedWinnerId));
     if (!targetWinner) return;
 
-    // Check 1: Is Song Already Uploaded?
     if (targetWinner.song_updated) {
       setMessage('🔒 Aapka naya gaana pehle hi upload hokar Lock ho chuka hai! Badalne ke liye Admin se sampark karein.');
       return;
     }
 
-    // Check 2: Secret PIN Verification
     if (String(targetWinner.secret_pin).trim() !== String(verifyPinInput).trim()) {
       setMessage('❌ Galat Secret PIN! Aap kisi aur fankaar ki ID se gaana upload nahi kar sakte!');
       return;
@@ -184,7 +177,8 @@ export default function Register() {
 
   const inputStyle = {
     width: '100%', padding: '12px', borderRadius: '8px',
-    border: '1px solid #d4c4a8', fontSize: '1rem', marginTop: '6px'
+    border: '1px solid #d4c4a8', fontSize: '1rem', marginTop: '6px',
+    boxSizing: 'border-box'
   };
 
   return (
@@ -201,9 +195,8 @@ export default function Register() {
         <div className="timer-pill">⏳ Samay Bacha Hai: {timeLeft}</div>
       )}
 
-      <div className="battle-arena-vertical" style={{ textAlign: 'left' }}>
+      <div className="battle-arena-vertical" style={{ textAlign: 'left', padding: '20px 15px' }}>
         
-        {/* CASE 1: PROMOTED WINNERS UPLOADING NEW SONG (WITH PIN SECURITY) */}
         {settings?.phase === 'next_round_upload' ? (
           <form onSubmit={handleWinnerNewSongUpload} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ background: '#fff9e6', padding: '12px', borderRadius: '8px', border: '1px solid #f39c12', fontSize: '0.88rem' }}>
@@ -238,23 +231,22 @@ export default function Register() {
                 style={inputStyle} 
                 required 
               />
-              <small style={{ color: '#777' }}>*Agar PIN bhool gaye hain, toh Admin se poochein.</small>
+              <small style={{ color: '#777', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>*Agar PIN bhool gaye hain, toh Admin se poochein.</small>
             </div>
 
             <div>
               <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>
                 {settings.round_name} ka Naya Gaana (Audio File) *:
               </label>
-              <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files[0])} required />
+              <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
             </div>
 
-            <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px' }}>
+            <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px', width: '100%', boxSizing: 'border-box' }}>
               {loading ? 'Verify & Upload Ho Raha Hai...' : `Verify PIN & Submit Song 🔒`}
             </button>
           </form>
         ) : settings?.phase === 'registration' && timeLeft !== 'Samay समाप्त' ? (
           
-          /* CASE 2: ROUND 1 NEW REGISTRATION */
           alreadyRegistered ? (
             <div style={{ textAlign: 'center', padding: '20px 10px' }}>
               <h3 style={{ color: '#27ae60', marginBottom: '8px' }}>✅ Aapki Entry Darj Ho Chuki Hai!</h3>
@@ -271,7 +263,7 @@ export default function Register() {
 
               <div>
                 <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Instagram Username (Mandatory) *:</label>
-                <input type="text" value={instaHandle} onChange={(e) => setInstaHandle(e.target.value)} placeholder="Jaise: @aakash_music" style={inputStyle} required />
+                <input type="text" value={instaHandle} onChange={(e) => setInstaHandle(e.target.value)} placeholder="Jaise: @fankaar_music" style={inputStyle} required />
               </div>
 
               <div>
@@ -285,12 +277,12 @@ export default function Register() {
                   style={inputStyle} 
                   required 
                 />
-                <small style={{ color: '#777' }}>*Jab aap Round 1 jeet kar agle round mein jayenge, toh naya song upload karne ke liye ye PIN manga jayega.</small>
+                <small style={{ color: '#777', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>*Jab aap Round 1 jeet kar agle round mein jayenge, toh naya song upload karne ke liye ye PIN manga jayega.</small>
               </div>
 
               <div>
                 <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>Apni Tasveer (DP) Chunein:</label>
-                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', backgroundColor: '#fdfbf7', padding: '12px', borderRadius: '8px', border: '1px solid #e2d5be' }}>
+                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', backgroundColor: '#fdfbf7', padding: '12px', borderRadius: '8px', border: '1px solid #e2d5be', boxSizing: 'border-box' }}>
                   <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <input type="radio" name="dpOption" checked={dpOption === 'none'} onChange={() => setDpOption('none')} />
                     Naam ke Initials
@@ -302,17 +294,17 @@ export default function Register() {
                 </div>
                 {dpOption === 'upload' && (
                   <div style={{ marginTop: '10px' }}>
-                    <input type="file" accept="image/*" onChange={(e) => setDpFile(e.target.files[0])} required />
+                    <input type="file" accept="image/*" onChange={(e) => setDpFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
                   </div>
                 )}
               </div>
 
               <div>
                 <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>Apni Aawaz (Audio File) *:</label>
-                <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files[0])} required />
+                <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
               </div>
 
-              <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px' }}>
+              <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px', width: '100%', boxSizing: 'border-box' }}>
                 {loading ? 'Upload Ho Raha Hai...' : 'Mehfil me Shamil Hon 🎤'}
               </button>
             </form>
