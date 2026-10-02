@@ -380,3 +380,56 @@ body {
     font-size: 1.15rem;
   }
 }
+
+/* =========================================
+   MOBILE RESPONSIVE FIXES FOR BRACKET CARD
+   ========================================= */
+@media (max-width: 768px) {
+  .bracket-card-Wrapper {
+    padding: 12px 8px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+  }
+
+  .bracket-header h3 {
+    font-size: 1.05rem;
+  }
+
+  .bracket-header small {
+    font-size: 0.7rem;
+  }
+
+  .bracket-scroll-area {
+    padding: 12px 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mobile par bracket boxes ko thoda compact banayein taaki fit ho sakein */
+  .bracket-box {
+    width: 105px !important;
+    min-height: 36px !important;
+    padding: 4px 5px !important;
+    font-size: 0.7rem !important;
+    gap: 4px !important;
+  }
+
+  .bracket-dp-container, 
+  .bracket-mini-dp {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .trophy-circle {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 1rem !important;
+  }
+
+  .finale-tag {
+    font-size: 0.55rem !important;
+  }
+
+  .symmetrical-bracket-board {
+    gap: 6px !important;
+  }
+}
