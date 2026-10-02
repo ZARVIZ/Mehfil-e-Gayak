@@ -10,6 +10,8 @@ export default function Register() {
   const [selectedWinnerId, setSelectedWinnerId] = useState('');
   const [verifyPinInput, setVerifyPinInput] = useState('');
 
+  // Form States
+  const [mode, setMode] = useState('register'); // 'register' or 'update_audio'
   const [name, setName] = useState('');
   const [instaHandle, setInstaHandle] = useState('');
   const [secretPin, setSecretPin] = useState('');
@@ -64,8 +66,6 @@ export default function Register() {
   // 1. Round 1 Registration (With 4-Digit Secret PIN)
   const handleNewRegistration = async (e) => {
     e.preventDefault();
-    if (alreadyRegistered) return;
-
     if (secretPin.trim().length < 4) {
       setMessage('Kripya kam se kam 4-digit ka Secret PIN banayein!');
       return;
@@ -79,7 +79,7 @@ export default function Register() {
     try {
       const { data: existing } = await supabase.from('contestants').select('id').ilike('insta_handle', cleanInsta);
       if (existing && existing.length > 0) {
-        setMessage('Is Instagram ID se pehle hi registration ho chuka hai!');
+        setMessage('Is Instagram ID se pehle hi registration ho chuka hai! Agar audio badalna hai, toh niche "Audio Update Karein" wale option par click karein.');
         setLoading(false);
         return;
       }
@@ -107,7 +107,7 @@ export default function Register() {
         secret_pin: secretPin.trim(),
         audio_url: audioUrlData.publicUrl,
         dp_url: finalDpUrl,
-        song_updated: true
+        song_updated: false
       }]);
 
       if (dbError) throw dbError;
@@ -122,7 +122,62 @@ export default function Register() {
     }
   };
 
-  // 2. Promoted Winner Uploading New Song (PROTECTED BY SECRET PIN & LOCK)
+  // 2. Self Audio Update during Registration Phase using Secret PIN
+  const handleSelfAudioUpdate = async (e) => {
+    e.preventDefault();
+    if (!audioFile) {
+      setMessage('Kripya nayi audio file chunein!');
+      return;
+    }
+
+    const cleanInsta = instaHandle.replace(/^@+/, '').trim();
+    setLoading(true);
+    setMessage('Aapka naya gaana upload ho raha hai...');
+
+    try {
+      const { data: contestant } = await supabase
+        .from('contestants')
+        .select('*')
+        .ilike('insta_handle', cleanInsta)
+        .single();
+
+      if (!contestant) {
+        setMessage('❌ Is Instagram handle se koi registration nahi mili!');
+        setLoading(false);
+        return;
+      }
+
+      if (String(contestant.secret_pin).trim() !== String(secretPin).trim()) {
+        setMessage('❌ Galat Secret PIN! Aap kisi aur ki entry update nahi kar sakte.');
+        setLoading(false);
+        return;
+      }
+
+      const audioExt = audioFile.name.split('.').pop();
+      const audioFileName = `audio_update_${Date.now()}.${audioExt}`;
+      const { error: audioErr } = await supabase.storage.from('audios').upload(audioFileName, audioFile);
+      if (audioErr) throw audioErr;
+
+      const { data: audioUrlData } = supabase.storage.from('audios').getPublicUrl(audioFileName);
+
+      const { error: updateErr } = await supabase
+        .from('contestants')
+        .update({ audio_url: audioUrlData.publicUrl })
+        .eq('id', contestant.id);
+
+      if (updateErr) throw updateErr;
+
+      setMessage('🎉 Shandar! Aapka naya gaana safaltapurvak update ho gaya hai.');
+      setSecretPin('');
+      setAudioFile(null);
+    } catch (err) {
+      setMessage(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Promoted Winner Uploading New Song for Next Rounds
   const handleWinnerNewSongUpload = async (e) => {
     e.preventDefault();
     if (!selectedWinnerId || !audioFile) {
@@ -134,17 +189,17 @@ export default function Register() {
     if (!targetWinner) return;
 
     if (targetWinner.song_updated) {
-      setMessage('🔒 Aapka naya gaana pehle hi upload hokar Lock ho chuka hai! Badalne ke liye Admin se sampark karein.');
+      setMessage('🔒 Aapka naya gaana pehle hi upload hokar Lock ho chuka hai!');
       return;
     }
 
     if (String(targetWinner.secret_pin).trim() !== String(verifyPinInput).trim()) {
-      setMessage('❌ Galat Secret PIN! Aap kisi aur fankaar ki ID se gaana upload nahi kar sakte!');
+      setMessage('❌ Galat Secret PIN!');
       return;
     }
 
     setLoading(true);
-    setMessage('PIN Verified ✅! Agle round ke liye aapka naya gaana upload ho raha hai...');
+    setMessage('PIN Verified ✅! Agle round ke liye naya gaana upload ho raha hai...');
 
     try {
       const audioExt = audioFile.name.split('.').pop();
@@ -164,7 +219,7 @@ export default function Register() {
 
       if (updateErr) throw updateErr;
 
-      setMessage('🎉 Naya gaana safaltapurvak upload aur Lock ho gaya! Admin verification ke baad battle shuru hogi.');
+      setMessage('🎉 Naya gaana safaltapurvak upload aur Lock ho gaya!');
       setVerifyPinInput('');
       setSelectedWinnerId('');
       initPage();
@@ -200,7 +255,7 @@ export default function Register() {
         {settings?.phase === 'next_round_upload' ? (
           <form onSubmit={handleWinnerNewSongUpload} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ background: '#fff9e6', padding: '12px', borderRadius: '8px', border: '1px solid #f39c12', fontSize: '0.88rem' }}>
-              🏆 <strong>Security Lock Enabled:</strong> Apna naya gaana upload karne ke liye wahi <strong>4-Digit Secret PIN</strong> daalein jo aapne Round 1 Registration ke waqt banaya tha.
+              🏆 <strong>Security Lock Enabled:</strong> Apna naya gaana upload karne ke liye wahi <strong>4-Digit Secret PIN</strong> daalein.
             </div>
 
             <div>
@@ -231,7 +286,6 @@ export default function Register() {
                 style={inputStyle} 
                 required 
               />
-              <small style={{ color: '#777', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>*Agar PIN bhool gaye hain, toh Admin se poochein.</small>
             </div>
 
             <div>
@@ -242,78 +296,145 @@ export default function Register() {
             </div>
 
             <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px', width: '100%', boxSizing: 'border-box' }}>
-              {loading ? 'Verify & Upload Ho Raha Hai...' : `Verify PIN & Submit Song 🔒`}
+              {loading ? 'Upload Ho Raha Hai...' : `Verify PIN & Submit Song 🔒`}
             </button>
           </form>
         ) : settings?.phase === 'registration' && timeLeft !== 'Samay समाप्त' ? (
           
-          alreadyRegistered ? (
-            <div style={{ textAlign: 'center', padding: '20px 10px' }}>
-              <h3 style={{ color: '#27ae60', marginBottom: '8px' }}>✅ Aapki Entry Darj Ho Chuki Hai!</h3>
-              <p style={{ color: '#666', fontSize: '0.95rem' }}>
-                Apna Secret PIN yaad rakhein—agle rounds mein naya gaana upload karne ke liye usi PIN ki zarurat padegi!
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleNewRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Aapka Naam (Stage Name) *:</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jaise: Tansen..." style={inputStyle} required />
-              </div>
-
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Instagram Username (Mandatory) *:</label>
-                <input type="text" value={instaHandle} onChange={(e) => setInstaHandle(e.target.value)} placeholder="Jaise: @fankaar_music" style={inputStyle} required />
-              </div>
-
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Create 4-Digit Secret PIN (Agle Rounds ke liye) *:</label>
-                <input 
-                  type="password" 
-                  maxLength={6}
-                  value={secretPin} 
-                  onChange={(e) => setSecretPin(e.target.value)} 
-                  placeholder="Jaise: 1234" 
-                  style={inputStyle} 
-                  required 
-                />
-                <small style={{ color: '#777', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>*Jab aap Round 1 jeet kar agle round mein jayenge, toh naya song upload karne ke liye ye PIN manga jayega.</small>
-              </div>
-
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>Apni Tasveer (DP) Chunein:</label>
-                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', backgroundColor: '#fdfbf7', padding: '12px', borderRadius: '8px', border: '1px solid #e2d5be', boxSizing: 'border-box' }}>
-                  <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <input type="radio" name="dpOption" checked={dpOption === 'none'} onChange={() => setDpOption('none')} />
-                    Naam ke Initials
-                  </label>
-                  <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <input type="radio" name="dpOption" checked={dpOption === 'upload'} onChange={() => setDpOption('upload')} />
-                    Upload Picture 🖼️
-                  </label>
-                </div>
-                {dpOption === 'upload' && (
-                  <div style={{ marginTop: '10px' }}>
-                    <input type="file" accept="image/*" onChange={(e) => setDpFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>Apni Aawaz (Audio File) *:</label>
-                <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
-              </div>
-
-              <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px', width: '100%', boxSizing: 'border-box' }}>
-                {loading ? 'Upload Ho Raha Hai...' : 'Mehfil me Shamil Hon 🎤'}
+          <div>
+            {/* Mode Selector Tabs during Registration */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+              <button 
+                type="button"
+                onClick={() => setMode('register')}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
+                  backgroundColor: mode === 'register' ? '#5c1522' : '#fdfbf7',
+                  color: mode === 'register' ? '#ffd700' : '#5c1522',
+                  border: '1px solid #5c1522'
+                }}
+              >
+                📝 New Registration
               </button>
-            </form>
-          )
+              <button 
+                type="button"
+                onClick={() => setMode('update_audio')}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
+                  backgroundColor: mode === 'update_audio' ? '#5c1522' : '#fdfbf7',
+                  color: mode === 'update_audio' ? '#ffd700' : '#5c1522',
+                  border: '1px solid #5c1522'
+                }}
+              >
+                🔄 Audio Galat Ho Gayi? Update Karein
+              </button>
+            </div>
+
+            {mode === 'register' ? (
+              alreadyRegistered ? (
+                <div style={{ textAlign: 'center', padding: '20px 10px' }}>
+                  <h3 style={{ color: '#27ae60', marginBottom: '8px' }}>✅ Aapki Entry Darj Ho Chuki Hai!</h3>
+                  <p style={{ color: '#666', fontSize: '0.95rem' }}>
+                    Agar aapko apna gaana badalna hai, toh upar <strong>"Audio Galat Ho Gayi? Update Karein"</strong> wale button par click karein.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleNewRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Aapka Naam (Stage Name) *:</label>
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jaise: Tansen..." style={inputStyle} required />
+                  </div>
+
+                  <div>
+                    <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Instagram Username (Mandatory) *:</label>
+                    <input type="text" value={instaHandle} onChange={(e) => setInstaHandle(e.target.value)} placeholder="Jaise: @fankaar_music" style={inputStyle} required />
+                  </div>
+
+                  <div>
+                    <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Create 4-Digit Secret PIN *:</label>
+                    <input 
+                      type="password" 
+                      maxLength={6}
+                      value={secretPin} 
+                      onChange={(e) => setSecretPin(e.target.value)} 
+                      placeholder="Jaise: 1234" 
+                      style={inputStyle} 
+                      required 
+                    />
+                    <small style={{ color: '#777', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>*Is PIN se aap apna gaana baad mein update bhi kar sakenge.</small>
+                  </div>
+
+                  <div>
+                    <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>Apni Tasveer (DP) Chunein:</label>
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', backgroundColor: '#fdfbf7', padding: '12px', borderRadius: '8px', border: '1px solid #e2d5be', boxSizing: 'border-box' }}>
+                      <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <input type="radio" name="dpOption" checked={dpOption === 'none'} onChange={() => setDpOption('none')} />
+                        Naam ke Initials
+                      </label>
+                      <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <input type="radio" name="dpOption" checked={dpOption === 'upload'} onChange={() => setDpOption('upload')} />
+                        Upload Picture 🖼️
+                      </label>
+                    </div>
+                    {dpOption === 'upload' && (
+                      <div style={{ marginTop: '10px' }}>
+                        <input type="file" accept="image/*" onChange={(e) => setDpFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>Apni Aawaz (Audio File) *:</label>
+                    <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
+                  </div>
+
+                  <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px', width: '100%', boxSizing: 'border-box' }}>
+                    {loading ? 'Upload Ho Raha Hai...' : 'Mehfil me Shamil Hon 🎤'}
+                  </button>
+                </form>
+              )
+            ) : (
+              /* Self Audio Update Form */
+              <form onSubmit={handleSelfAudioUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ background: '#fff9e6', padding: '12px', borderRadius: '8px', border: '1px solid #f39c12', fontSize: '0.88rem' }}>
+                  🔄 <strong>Audio Update:</strong> Agar aapne pehle registration ke waqt galat gaana daal diya tha, toh apna Instagram handle aur wahi <strong>Secret PIN</strong> daalkar naya sahi gaana upload karein.
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Aapka Instagram Username *:</label>
+                  <input type="text" value={instaHandle} onChange={(e) => setInstaHandle(e.target.value)} placeholder="Jaise: @fankaar_music" style={inputStyle} required />
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#5c1522' }}>Aapka 4-Digit Secret PIN *:</label>
+                  <input 
+                    type="password" 
+                    maxLength={6}
+                    value={secretPin} 
+                    onChange={(e) => setSecretPin(e.target.value)} 
+                    placeholder="Wahi PIN jo registration mein banaya tha..." 
+                    style={inputStyle} 
+                    required 
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#5c1522', display: 'block', marginBottom: '8px' }}>Nayi Sahi Audio File *:</label>
+                  <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files[0])} style={{ width: '100%', boxSizing: 'border-box' }} required />
+                </div>
+
+                <button type="submit" className="vote-btn" disabled={loading} style={{ padding: '14px', width: '100%', boxSizing: 'border-box' }}>
+                  {loading ? 'Update Ho Raha Hai...' : 'Sahi Gaana Update Karein 🎵'}
+                </button>
+              </form>
+            )}
+          </div>
+
         ) : (
           <div style={{ textAlign: 'center', padding: '20px 10px' }}>
             <h3 style={{ color: '#5c1522', marginBottom: '8px' }}>🔒 Registration Abhi Band Hai</h3>
             <p style={{ color: '#666', fontSize: '0.95rem' }}>
-              Abhi maidan mein Battles chal rahi hain! Jaise hi ye round khatam hoga, jeetne wale fankaaron ke liye naya gaana upload karne ka darwaza khulega.
+              Abhi maidan mein Battles chal rahi hain!
             </p>
           </div>
         )}
