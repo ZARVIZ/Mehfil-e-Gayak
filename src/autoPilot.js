@@ -1,5 +1,23 @@
 import { supabase } from './supabaseClient';
 
+// Helper function to trigger browser notification & tune automatically
+const triggerAutoNotification = (title, body) => {
+  if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.play().catch(err => console.log("Audio play prevented:", err));
+
+      new Notification(title, {
+        body: body,
+        icon: '/hero.png',
+        badge: '/hero.png'
+      });
+    } catch (e) {
+      console.log("Notification error:", e);
+    }
+  }
+};
+
 export const getRoundNameByCount = (contestantCount) => {
   if (contestantCount <= 2) return 'Grand Finale';
   if (contestantCount <= 4) return 'Semi-Final';
@@ -32,7 +50,7 @@ export const runAutoPilotCheck = async () => {
     if (!currentBattles || currentBattles.length === 0) return settings;
 
     // ==========================================
-    // CASE A: GRAND FINALE KHATAM -> SARTAAJ DECLARE
+    // CASE A: GRAND FINALE KHATAM -> SARTAAJ CROWNED
     // ==========================================
     if (currentBattles.length === 1) {
       const finalMatch = currentBattles[0];
@@ -57,7 +75,6 @@ export const runAutoPilotCheck = async () => {
         runner_up_dp: runnerUp.dp || ''
       }]);
 
-      // Purane battles, contestants aur requests sab saaf kar do
       await supabase.from('battles').delete().neq('id', 0);
       await supabase.from('contestants').delete().neq('id', 0);
       await supabase.from('vote_requests').delete().neq('id', 0);
@@ -68,17 +85,23 @@ export const runAutoPilotCheck = async () => {
           phase: 'completed',
           round_name: `👑 Sartaaj: ${winner.name}`,
           phase_end_time: null,
-          bracket_history: [] // Tournament khatam hote hi Bracket History bilkul saaf!
+          bracket_history: []
         })
         .eq('id', 1)
         .select()
         .single();
 
+      // 👑 Automatic Winner Notification Trigger
+      triggerAutoNotification(
+        "👑 Naya Sartaaj Taj-Poshit Hua!", 
+        `Itihaas ke panno par ${winner.name} ka naam darj ho gaya hai! Aaiye aur Dastaan-e-Sartaaj mein unki shandar peshkash suniye.`
+      );
+
       return updated;
     }
 
     // ==========================================
-    // CASE B: ROUND KHATAM -> WINNERS KO PROMOTE KARO
+    // CASE B: ROUND KHATAM -> NEXT ROUND PROMOTION
     // ==========================================
     const winners = currentBattles.map(b => {
       if ((b.votes_a || 0) >= (b.votes_b || 0) || !b.audio_b) {
@@ -124,6 +147,12 @@ export const runAutoPilotCheck = async () => {
       .eq('id', 1)
       .select()
       .single();
+
+    // ⚔️ Automatic Next Round Notification Trigger
+    triggerAutoNotification(
+      "⚔️ Takkar Ka Muqabla Shuru!", 
+      `Agla daur shuru ho chuka hai! Fankaar apne naye gaane upload kar rahe hain. Taiyar ho jayiye votes ki barsaat ke liye!`
+    );
 
     return updated;
   } catch (err) {
